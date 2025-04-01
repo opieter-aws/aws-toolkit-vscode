@@ -67,12 +67,12 @@ function getAmazonQCodeWhispererNodes() {
 
         // Security scans
         createSeparator('Code Reviews'),
-        ...(AuthUtil.instance.isBuilderIdInUse() ? [] : [createAutoScans(autoScansEnabled)]),
+        ...(AuthUtil.instance.isBuilderIdConnection() ? [] : [createAutoScans(autoScansEnabled)]),
         createSecurityScan(),
 
         // Amazon Q + others
         createSeparator('Other Features'),
-        ...(AuthUtil.instance.isValidEnterpriseSsoInUse() && AuthUtil.instance.isCustomizationFeatureEnabled
+        ...(AuthUtil.instance.isIdcConnection() && AuthUtil.instance.isCustomizationFeatureEnabled
             ? [createSelectCustomization()]
             : []),
         switchToAmazonQNode(),

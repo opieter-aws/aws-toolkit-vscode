@@ -9,6 +9,7 @@
  */
 
 export const builderIdStartUrl = 'https://view.awsapps.com/start'
+export const builderIdRegion = 'us-east-1'
 export const internalStartUrl = 'https://amzn.awsapps.com/start'
 
 /**

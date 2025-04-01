@@ -94,11 +94,7 @@ export const baseCustomization = {
  * @returns customization selected by users, `baseCustomization` if none is selected
  */
 export const getSelectedCustomization = (): Customization => {
-    if (
-        !AuthUtil.instance.isCustomizationFeatureEnabled ||
-        !AuthUtil.instance.isValidEnterpriseSsoInUse() ||
-        !AuthUtil.instance.conn
-    ) {
+    if (!AuthUtil.instance.isCustomizationFeatureEnabled || !AuthUtil.instance.isIdcConnection()) {
         return baseCustomization
     }
 
@@ -107,7 +103,7 @@ export const getSelectedCustomization = (): Customization => {
         Object,
         {}
     )
-    const selectedCustomization = selectedCustomizationArr[AuthUtil.instance.conn.label]
+    const selectedCustomization = selectedCustomizationArr[AuthUtil.instance.profileName]
 
     if (selectedCustomization && selectedCustomization.name !== '') {
         return selectedCustomization
@@ -115,6 +111,8 @@ export const getSelectedCustomization = (): Customization => {
         return baseCustomization
     }
 }
+
+// TODO: Do NOT use AuthUtil.instance.profileName, migrate the old setting and use a single value instead of a map
 
 /**
  * @param customization customization to select
@@ -124,7 +122,7 @@ export const getSelectedCustomization = (): Customization => {
  *  2. the override customization arn is different from the previous override customization if any. The purpose is to only do override once on users' behalf.
  */
 export const setSelectedCustomization = async (customization: Customization, isOverride: boolean = false) => {
-    if (!AuthUtil.instance.isValidEnterpriseSsoInUse() || !AuthUtil.instance.conn) {
+    if (!AuthUtil.instance.isIdcConnection()) {
         return
     }
     if (isOverride) {
@@ -138,8 +136,8 @@ export const setSelectedCustomization = async (customization: Customization, isO
         Object,
         {}
     )
-    selectedCustomizationObj[AuthUtil.instance.conn.label] = customization
-    getLogger().debug(`Selected customization ${customization.name} for ${AuthUtil.instance.conn.label}`)
+    selectedCustomizationObj[AuthUtil.instance.profileName] = customization
+    getLogger().debug(`Selected customization ${customization.name} for ${AuthUtil.instance.profileName}`)
 
     await globals.globalState.update('CODEWHISPERER_SELECTED_CUSTOMIZATION', selectedCustomizationObj)
     if (isOverride) {
@@ -150,7 +148,7 @@ export const setSelectedCustomization = async (customization: Customization, isO
 }
 
 export const getPersistedCustomizations = (): Customization[] => {
-    if (!AuthUtil.instance.isValidEnterpriseSsoInUse() || !AuthUtil.instance.conn) {
+    if (!AuthUtil.instance.isIdcConnection()) {
         return []
     }
     const persistedCustomizationsObj = globals.globalState.tryGet<{ [label: string]: Customization[] }>(
@@ -158,11 +156,11 @@ export const getPersistedCustomizations = (): Customization[] => {
         Object,
         {}
     )
-    return persistedCustomizationsObj[AuthUtil.instance.conn.label] || []
+    return persistedCustomizationsObj[AuthUtil.instance.profileName] || []
 }
 
 export const setPersistedCustomizations = async (customizations: Customization[]) => {
-    if (!AuthUtil.instance.isValidEnterpriseSsoInUse() || !AuthUtil.instance.conn) {
+    if (!AuthUtil.instance.isIdcConnection()) {
         return
     }
     const persistedCustomizationsObj = globals.globalState.tryGet<{ [label: string]: Customization[] }>(
@@ -170,7 +168,7 @@ export const setPersistedCustomizations = async (customizations: Customization[]
         Object,
         {}
     )
-    persistedCustomizationsObj[AuthUtil.instance.conn.label] = customizations
+    persistedCustomizationsObj[AuthUtil.instance.profileName] = customizations
     await globals.globalState.update('CODEWHISPERER_PERSISTED_CUSTOMIZATIONS', persistedCustomizationsObj)
 }
 

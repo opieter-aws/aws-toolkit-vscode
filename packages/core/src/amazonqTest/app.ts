@@ -49,8 +49,8 @@ export function init(appContext: AmazonQAppInitContext) {
 
     appContext.registerWebViewToAppMessagePublisher(new MessagePublisher<any>(testChatUIInputEventEmitter), 'testgen')
 
-    const debouncedEvent = debounce(async () => {
-        const authenticated = (await AuthUtil.instance.getChatAuthState()).amazonQ === 'connected'
+    const debouncedEvent = debounce(async (state) => {
+        const authenticated = state === 'connected'
         let authenticatingSessionID = ''
 
         if (authenticated) {
@@ -65,8 +65,8 @@ export function init(appContext: AmazonQAppInitContext) {
         messenger.sendAuthenticationUpdate(authenticated, [authenticatingSessionID])
     }, 500)
 
-    AuthUtil.instance.secondaryAuth.onDidChangeActiveConnection(() => {
-        return debouncedEvent()
+    AuthUtil.instance.onDidChangeConnectionState((state) => {
+        return debouncedEvent(state)
     })
     testGenState.setChatControllers(testChatControllerEventEmitters)
     // TODO: Add testGen provider for creating new files after test generation if they does not exist

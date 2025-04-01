@@ -293,13 +293,10 @@ export class LineAnnotationController implements vscode.Disposable {
             this.container.lineTracker.onDidChangeActiveLines(async (e) => {
                 await this.onActiveLinesChanged(e)
             }),
-            this.container.auth.auth.onDidChangeConnectionState(async (e) => {
-                if (e.state !== 'authenticating') {
-                    await this.refresh(vscode.window.activeTextEditor, 'editor')
-                }
-            }),
-            this.container.auth.secondaryAuth.onDidChangeActiveConnection(async () => {
+            this.container.auth.onDidChangeConnectionState(async (state) => {
+                // if (state !== 'authenticating') {
                 await this.refresh(vscode.window.activeTextEditor, 'editor')
+                // }
             }),
             Commands.register('aws.amazonq.dismissTutorial', async () => {
                 const editor = vscode.window.activeTextEditor
@@ -424,7 +421,7 @@ export class LineAnnotationController implements vscode.Disposable {
             return
         }
 
-        if (!this.container.auth.isConnectionValid()) {
+        if (!this.container.auth.isConnected()) {
             this.clear()
             return
         }

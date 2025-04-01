@@ -13,20 +13,26 @@ import { tryFunctions } from '../../utilities/tsUtils'
  * @param getMetadata metadata extractor to be applied to result.
  * @returns result of stage
  */
-export async function lspSetupStage<Result>(
+export function lspSetupStage<Result>(
     stageName: LanguageServerSetupStage,
-    runStage: () => Promise<Result>,
+    runStage: (() => Result) | (() => Promise<Result>),
     getMetadata?: MetadataExtractor<Result>
-) {
-    return await telemetry.languageServer_setup.run(async (span) => {
+): Promise<Result> {
+    return telemetry.languageServer_setup.run(async (span) => {
         span.record({ languageServerSetupStage: stageName })
-        const result = await runStage()
+
+        let result = runStage()
+        if (result instanceof Promise) {
+            result = await result
+        }
+
         if (getMetadata) {
             span.record(getMetadata(result))
         }
         return result
     })
 }
+
 /**
  * Tries to resolve the result of a stage using the resolvers provided in order. The first one to succceed
  * has its result returned, but all intermediate will emit telemetry.

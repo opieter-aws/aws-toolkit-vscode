@@ -20,6 +20,9 @@ export {
     isIamConnection,
 } from './connection'
 export { Auth } from './auth'
+export { AuthStateEvent } from './auth2'
+export { LanguageClientAuth, AuthState, notificationTypes } from './auth2'
 export { CredentialsStore } from './credentials/store'
 export { LoginManager } from './deprecated/loginManager'
+export { getTokenCacheFile, getRegistrationCacheFile, getCacheDir } from './sso/cache'
 export * as AuthUtils from './utils'

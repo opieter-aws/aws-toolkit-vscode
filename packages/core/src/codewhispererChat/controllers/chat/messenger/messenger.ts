@@ -29,7 +29,6 @@ import { ChatPromptCommandType, DocumentReference, TriggerPayload } from '../mod
 import { getHttpStatusCode, getRequestId, ToolkitError } from '../../../../shared/errors'
 import { keys } from '../../../../shared/utilities/tsUtils'
 import { getLogger } from '../../../../shared/logger/logger'
-import { FeatureAuthState } from '../../../../codewhisperer/util/authUtil'
 import { CodeScanIssue } from '../../../../codewhisperer/models/model'
 import { marked } from 'marked'
 import { JSDOM } from 'jsdom'
@@ -38,6 +37,7 @@ import { extractCodeBlockLanguage } from '../../../../shared/markdown'
 import { extractAuthFollowUp } from '../../../../amazonq/util/authUtils'
 import { helpMessage } from '../../../../amazonq/webview/ui/texts/constants'
 import { ChatItemButton, ChatItemFormItem, MynahUIDataModel } from '@aws/mynah-ui'
+import { AuthState } from '../../../../auth/auth2'
 
 export type StaticTextResponseType = 'quick-action-help' | 'onboarding-help' | 'transform' | 'help'
 
@@ -52,7 +52,7 @@ export class Messenger {
         private readonly telemetryHelper: CWCTelemetryHelper
     ) {}
 
-    public async sendAuthNeededExceptionMessage(credentialState: FeatureAuthState, tabID: string, triggerID: string) {
+    public async sendAuthNeededExceptionMessage(credentialState: AuthState, tabID: string, triggerID: string) {
         const { message, authType } = extractAuthFollowUp(credentialState)
         this.dispatcher.sendAuthNeededExceptionMessage(
             new AuthNeededException(

@@ -213,14 +213,14 @@ export class FeatureDevController {
                 amazonqConversationId: session?.conversationId,
                 value: 1,
                 result: 'Succeeded',
-                credentialStartUrl: AuthUtil.instance.startUrl,
+                credentialStartUrl: AuthUtil.instance.connection?.startUrl,
             })
         } else if (vote === 'downvote') {
             telemetry.amazonq_codeGenerationThumbsDown.emit({
                 amazonqConversationId: session?.conversationId,
                 value: 1,
                 result: 'Succeeded',
-                credentialStartUrl: AuthUtil.instance.startUrl,
+                credentialStartUrl: AuthUtil.instance.connection?.startUrl,
             })
         }
     }
@@ -392,8 +392,8 @@ export class FeatureDevController {
             session.latestMessage = message.message
 
             await session.disableFileList()
-            const authState = await AuthUtil.instance.getChatAuthState()
-            if (authState.amazonQ !== 'connected') {
+            const authState = AuthUtil.instance.getAuthState()
+            if (authState !== 'connected') {
                 await this.messenger.sendAuthNeededExceptionMessage(authState, message.tabID)
                 session.isAuthenticating = true
                 return
@@ -714,7 +714,7 @@ export class FeatureDevController {
             amazonqConversationId: session.conversationId,
             enabled: true,
             result: 'Succeeded',
-            credentialStartUrl: AuthUtil.instance.startUrl,
+            credentialStartUrl: AuthUtil.instance.connection?.startUrl,
         })
         // Unblock the message button
         this.messenger.sendAsyncEventProgress(message.tabID, false, undefined)
@@ -825,7 +825,7 @@ export class FeatureDevController {
         }
 
         telemetry.amazonq_modifySourceFolder.emit({
-            credentialStartUrl: AuthUtil.instance.startUrl,
+            credentialStartUrl: AuthUtil.instance.connection?.startUrl,
             amazonqConversationId: session.conversationId,
             ...metricData,
         })
@@ -917,7 +917,7 @@ export class FeatureDevController {
             amazonqConversationId: session.conversationId,
             enabled: true,
             result: 'Succeeded',
-            credentialStartUrl: AuthUtil.instance.startUrl,
+            credentialStartUrl: AuthUtil.instance.connection?.startUrl,
         })
 
         const workspacePrefixMapping = getWorkspaceFoldersByPrefixes(session.config.workspaceFolders)
@@ -967,8 +967,8 @@ export class FeatureDevController {
             session = await this.sessionStorage.getSession(message.tabID)
             getLogger().debug(`${featureName}: Session created with id: ${session.tabID}`)
 
-            const authState = await AuthUtil.instance.getChatAuthState()
-            if (authState.amazonQ !== 'connected') {
+            const authState = AuthUtil.instance.getAuthState()
+            if (authState !== 'connected') {
                 void this.messenger.sendAuthNeededExceptionMessage(authState, message.tabID)
                 session.isAuthenticating = true
                 return
@@ -1075,7 +1075,7 @@ export class FeatureDevController {
         if (amazonqNumberOfFilesAccepted > 0 && !session.acceptCodeTelemetrySent) {
             session.updateAcceptCodeTelemetrySent(true)
             telemetry.amazonq_isAcceptedCodeChanges.emit({
-                credentialStartUrl: AuthUtil.instance.startUrl,
+                credentialStartUrl: AuthUtil.instance.connection?.startUrl,
                 amazonqConversationId: session.conversationId,
                 amazonqNumberOfFilesAccepted,
                 enabled: true,

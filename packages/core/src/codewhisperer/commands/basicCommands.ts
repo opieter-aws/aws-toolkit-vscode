@@ -52,7 +52,6 @@ import { removeDiagnostic } from '../service/diagnosticsProvider'
 import { SsoAccessTokenProvider } from '../../auth/sso/ssoAccessTokenProvider'
 import { ToolkitError, getErrorMsg, getTelemetryReason, getTelemetryReasonDesc } from '../../shared/errors'
 import { isRemoteWorkspace } from '../../shared/vscode/env'
-import { isBuilderIdConnection } from '../../auth/connection'
 import globals from '../../shared/extensionGlobals'
 import { getVscodeCliPath } from '../../shared/utilities/pathFind'
 import { setContext } from '../../shared/vscode/setContext'
@@ -115,7 +114,7 @@ export const toggleCodeScans = Commands.declare(
     { id: 'aws.codeWhisperer.toggleCodeScan', compositeKey: { 1: 'source' } },
     (scansState: CodeScansState) => async (_: VsCodeCommandArg, source: CodeWhispererSource) => {
         await telemetry.aws_modifySetting.run(async (span) => {
-            if (isBuilderIdConnection(AuthUtil.instance.conn)) {
+            if (AuthUtil.instance.isBuilderIdConnection()) {
                 throw new Error(`Auto-scans are not supported with the Amazon Builder ID connection.`)
             }
             span.record({
@@ -240,7 +239,7 @@ export const showFileScan = Commands.declare(
 export const selectCustomizationPrompt = Commands.declare(
     { id: 'aws.amazonq.selectCustomization', compositeKey: { 1: 'source' } },
     () => async (_: VsCodeCommandArg, source: CodeWhispererSource) => {
-        if (isBuilderIdConnection(AuthUtil.instance.conn)) {
+        if (AuthUtil.instance.isBuilderIdConnection()) {
             throw new Error(`Select Customizations are not supported with the Amazon Builder ID connection.`)
         }
         telemetry.ui_click.emit({ elementId: 'cw_selectCustomization_Cta' })
@@ -358,7 +357,7 @@ export const openSecurityIssuePanel = Commands.declare(
             findingId: targetIssue.findingId,
             detectorId: targetIssue.detectorId,
             ruleId: targetIssue.ruleId,
-            credentialStartUrl: AuthUtil.instance.startUrl,
+            credentialStartUrl: AuthUtil.instance.connection?.startUrl,
             autoDetected: targetIssue.autoDetected,
         })
         TelemetryHelper.instance.sendCodeScanRemediationsEvent(
@@ -447,7 +446,7 @@ export const applySecurityFix = Commands.declare(
             ruleId: targetIssue.ruleId,
             component: targetSource,
             result: 'Succeeded',
-            credentialStartUrl: AuthUtil.instance.startUrl,
+            credentialStartUrl: AuthUtil.instance.connection?.startUrl,
             codeFixAction: 'applyFix',
             autoDetected: targetIssue.autoDetected,
             codewhispererCodeScanJobId: targetIssue.scanJobId,
@@ -576,8 +575,8 @@ export const applySecurityFix = Commands.declare(
 
 export const signoutCodeWhisperer = Commands.declare(
     { id: 'aws.amazonq.signout', compositeKey: { 1: 'source' } },
-    (auth: AuthUtil) => async (_: VsCodeCommandArg, source: CodeWhispererSource) => {
-        await auth.secondaryAuth.deleteConnection()
+    () => async (_: VsCodeCommandArg, source: CodeWhispererSource) => {
+        await AuthUtil.instance.logout()
         SecurityIssueTreeViewProvider.instance.refresh()
         return focusAmazonQPanel.execute(placeholder, source)
     }
@@ -634,14 +633,14 @@ export const registerToolkitApiCallback = Commands.declare(
             if (_toolkitApi) {
                 registerToolkitApiCallbackOnce()
                 // Declare current conn immediately
-                const currentConn = AuthUtil.instance.conn
-                if (currentConn?.type === 'sso') {
+                // TODO: Should not fire for IAM connections
+                if (AuthUtil.instance.isConnected()) {
                     _toolkitApi.declareConnection(
                         {
-                            type: currentConn.type,
-                            ssoRegion: currentConn.ssoRegion,
-                            startUrl: currentConn.startUrl,
-                            id: currentConn.id,
+                            type: 'sso',
+                            ssoRegion: AuthUtil.instance.connection?.region,
+                            startUrl: AuthUtil.instance.connection?.startUrl,
+                            id: AuthUtil.instance.profileName,
                         } as AwsConnection,
                         'Amazon Q'
                     )
@@ -834,7 +833,7 @@ export const ignoreAllIssues = Commands.declare(
 
                 telemetry.record({
                     component: targetSource,
-                    credentialStartUrl: AuthUtil.instance.startUrl,
+                    credentialStartUrl: AuthUtil.instance.connection?.startUrl,
                     detectorId: targetIssue.detectorId,
                     findingId: targetIssue.findingId,
                     ruleId: targetIssue.ruleId,
@@ -869,7 +868,7 @@ export const ignoreIssue = Commands.declare(
 
             telemetry.record({
                 component: targetSource,
-                credentialStartUrl: AuthUtil.instance.startUrl,
+                credentialStartUrl: AuthUtil.instance.connection?.startUrl,
                 detectorId: targetIssue.detectorId,
                 findingId: targetIssue.findingId,
                 ruleId: targetIssue.ruleId,

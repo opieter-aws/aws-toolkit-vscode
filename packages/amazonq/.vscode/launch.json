@@ -142,10 +142,14 @@
             "type": "node",
             "request": "attach",
             "port": 6080, // Hard defined in core/src/shared/lsp/platform.ts
-            "outFiles": ["${workspaceFolder}/../../../language-servers/**/out/**/*.js"],
+            "outFiles": [
+                "${workspaceFolder}/../../../language-servers/**/out/**/*.js",
+                "${workspaceFolder}/../../../language-server-runtimes/**/out/**/*.js"
+            ],
             "skipFiles": [
                 "<node_internals>/**",
-                "${workspaceFolder}/../../../language-servers/**/node_modules/**/*.js"
+                "${workspaceFolder}/../../../language-servers/**/node_modules/**/*.js",
+                "${workspaceFolder}/../../../language-server-runtimes/**/node_modules/**/*.js"
             ],
             "restart": {
                 "maxAttempts": 10,

@@ -5,9 +5,9 @@
 
 import * as vscode from 'vscode'
 import { ResourceTreeDataProvider, TreeNode } from '../../shared/treeview/resourceTreeDataProvider'
-import { AuthState } from '../../codewhisperer/util/authUtil'
 import { createLearnMoreNode, createInstallQNode, createDismissNode } from './amazonQChildrenNodes'
 import { Commands } from '../../shared/vscode/commands2'
+import { AuthState } from '../../auth/auth2'
 
 export class AmazonQNode implements TreeNode {
     public readonly id = 'amazonq'

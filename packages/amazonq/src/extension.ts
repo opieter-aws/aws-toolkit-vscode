@@ -32,6 +32,7 @@ import {
     setupUninstallHandler,
     maybeShowMinVscodeWarning,
     Experiments,
+    Commands,
 } from 'aws-core-vscode/shared'
 import { ExtStartUpSources } from 'aws-core-vscode/telemetry'
 import { VSCODE_EXTENSION_ID } from 'aws-core-vscode/utils'
@@ -116,15 +117,21 @@ export async function activateAmazonQCommon(context: vscode.ExtensionContext, is
     const extContext = {
         extensionContext: context,
     }
-    // This contains every lsp agnostic things (auth, security scan, code scan)
-    await activateCodeWhisperer(extContext as ExtContext)
+
     if (Experiments.instance.get('amazonqLSP', false)) {
         await activateAmazonqLsp(context)
     }
+    
+    // This contains every lsp agnostic things (auth, security scan, code scan)
+    await activateCodeWhisperer(extContext as ExtContext)
 
     if (!Experiments.instance.get('amazonqLSPInline', false)) {
         await activateInlineCompletion()
     }
+
+    // Create status bar and reference log UI elements
+    void Commands.tryExecute('aws.amazonq.refreshStatusBar')
+    void Commands.tryExecute('aws.amazonq.updateReferenceLog')
 
     // Generic extension commands
     registerGenericCommands(context, amazonQContextPrefix)

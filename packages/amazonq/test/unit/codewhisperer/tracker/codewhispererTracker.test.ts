@@ -83,7 +83,7 @@ describe('codewhispererTracker', function () {
     describe('emitTelemetryOnSuggestion', function () {
         it('Should call recordCodewhispererUserModification with suggestion event', async function () {
             const testStartUrl = 'testStartUrl'
-            sinon.stub(AuthUtil.instance, 'startUrl').value(testStartUrl)
+            sinon.stub(AuthUtil.instance, 'connection').value({ startUrl: testStartUrl })
             const suggestion = createAcceptedSuggestionEntry()
             const assertTelemetry = assertTelemetryCurried('codewhisperer_userModification')
             await CodeWhispererTracker.getTracker().emitTelemetryOnSuggestion(suggestion)

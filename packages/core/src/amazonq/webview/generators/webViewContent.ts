@@ -90,7 +90,7 @@ export class WebViewContentGenerator {
         <script type="text/javascript">
             const init = () => {
                 createMynahUI(acquireVsCodeApi(), ${
-                    (await AuthUtil.instance.getChatAuthState()).amazonQ === 'connected'
+                    AuthUtil.instance.getAuthState() === 'connected'
                 },${featureConfigsString},${welcomeLoadCount},${disclaimerAcknowledged},${disabledCommandsString});
             }
         </script>
