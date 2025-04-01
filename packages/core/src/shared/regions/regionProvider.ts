@@ -96,7 +96,7 @@ export class RegionProvider {
         const conn = Auth.instance.activeConnection
         if (isAmazonQ() && isSsoConnection(conn)) {
             // Only the current auth region makes sense for Amazon Q use cases.
-            return conn.ssoRegion
+            return conn?.ssoRegion ?? 'us-east-1'
         }
 
         if (conn?.type === 'sso') {

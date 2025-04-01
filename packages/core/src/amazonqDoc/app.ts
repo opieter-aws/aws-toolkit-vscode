@@ -80,8 +80,8 @@ export function init(appContext: AmazonQAppInitContext) {
 
     appContext.registerWebViewToAppMessagePublisher(new MessagePublisher<any>(docChatUIInputEventEmitter), 'doc')
 
-    const debouncedEvent = debounce(async () => {
-        const authenticated = (await AuthUtil.instance.getChatAuthState()).amazonQ === 'connected'
+    const debouncedEvent = debounce(async (state) => {
+        const authenticated = state === 'connected'
         let authenticatingSessionIDs: string[] = []
         if (authenticated) {
             const authenticatingSessions = sessionStorage.getAuthenticatingSessions()
@@ -97,7 +97,7 @@ export function init(appContext: AmazonQAppInitContext) {
         messenger.sendAuthenticationUpdate(authenticated, authenticatingSessionIDs)
     }, 500)
 
-    AuthUtil.instance.secondaryAuth.onDidChangeActiveConnection(() => {
-        return debouncedEvent()
+    AuthUtil.instance.onDidChangeConnectionState((state) => {
+        return debouncedEvent(state)
     })
 }
