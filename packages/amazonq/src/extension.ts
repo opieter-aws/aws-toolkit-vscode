@@ -121,7 +121,7 @@ export async function activateAmazonQCommon(context: vscode.ExtensionContext, is
     if (Experiments.instance.get('amazonqLSP', false)) {
         await activateAmazonqLsp(context)
     }
-    
+
     // This contains every lsp agnostic things (auth, security scan, code scan)
     await activateCodeWhisperer(extContext as ExtContext)
 

@@ -8,12 +8,7 @@ import * as localizedText from '../../shared/localizedText'
 import * as nls from 'vscode-nls'
 import { ToolkitError } from '../../shared/errors'
 import { AmazonQPromptSettings } from '../../shared/settings'
-import {
-    scopesCodeWhispererCore,
-    scopesCodeWhispererChat,
-    scopesFeatureDev,
-    scopesGumby,
-} from '../../auth/connection'
+import { scopesCodeWhispererCore, scopesCodeWhispererChat, scopesFeatureDev, scopesGumby } from '../../auth/connection'
 import { getLogger } from '../../shared/logger/logger'
 import { Commands } from '../../shared/vscode/commands2'
 import { vsCodeState } from '../models/model'
@@ -22,7 +17,7 @@ import { showAmazonQWalkthroughOnce } from '../../amazonq/onboardingPage/walkthr
 import { setContext } from '../../shared/vscode/setContext'
 import { openUrl } from '../../shared/utilities/vsCodeUtils'
 import { telemetry } from '../../shared/telemetry/telemetry'
-import { AuthState, AuthStateEvent, LanguageClientAuth, SsoLogin } from '../../auth/auth2'
+import { AuthStateEvent, AuthStates, LanguageClientAuth, LoginTypes, SsoLogin } from '../../auth/auth2'
 import { builderIdStartUrl } from '../../auth/sso/constants'
 import { VSCODE_EXTENSION_ID } from '../../shared/extensions'
 
@@ -64,6 +59,10 @@ export class AuthUtil {
         this.onDidChangeConnectionState((e: AuthStateEvent) => this.stateChangeHandler(e))
     }
 
+    isSsoSession() {
+        return this.session.loginType === LoginTypes.SSO
+    }
+
     async restore() {
         await this.session.restore()
         await this.refreshState()
@@ -77,7 +76,7 @@ export class AuthUtil {
     }
 
     reauthenticate() {
-        if (this.session?.type !== 'sso') {
+        if (!this.isSsoSession()) {
             throw new ToolkitError('Cannot reauthenticate non-SSO sessions.')
         }
 
@@ -85,17 +84,17 @@ export class AuthUtil {
     }
 
     logout() {
-        if (this.session?.type !== 'sso') {
+        if (!this.isSsoSession()) {
             // No need to log out other session types
             return
         }
-
+        this.lspAuth.deleteBearerToken()
         return this.session.logout()
     }
 
     async getToken() {
         // TODO: IAM
-        if (this.session?.type === 'sso') {
+        if (this.isSsoSession()) {
             return (await this.session.getToken()).token
         } else {
             throw new ToolkitError('No valid session.')
@@ -159,11 +158,11 @@ export class AuthUtil {
     }
 
     isConnected() {
-        return this.getAuthState() === 'connected'
+        return this.getAuthState() === AuthStates.CONNECTED
     }
 
     isConnectionExpired() {
-        return this.getAuthState() === 'expired'
+        return this.getAuthState() === AuthStates.EXPIRED
     }
 
     isBuilderIdConnection() {
@@ -180,9 +179,9 @@ export class AuthUtil {
 
     // legacy
     public async setVscodeContextProps(state = this.getAuthState()) {
-        await setContext('aws.codewhisperer.connected', state === 'connected')
-        await setContext('aws.amazonq.showLoginView', state !== 'connected') // Login view also handles expired state.
-        await setContext('aws.codewhisperer.connectionExpired', state === 'expired')
+        await setContext('aws.codewhisperer.connected', state === AuthStates.CONNECTED)
+        await setContext('aws.amazonq.showLoginView', state !== AuthStates.CONNECTED) // Login view also handles expired state.
+        await setContext('aws.codewhisperer.connectionExpired', state === AuthStates.EXPIRED)
     }
 
     private reauthenticatePromptShown: boolean = false
@@ -259,8 +258,7 @@ export class AuthUtil {
 
     private async stateChangeHandler(e: AuthStateEvent) {
         if (e.state === 'refreshed') {
-            const params =
-                this.session?.type === 'sso' ? (await this.session.getToken()).updateCredentialsParams : undefined // TODO
+            const params = this.isSsoSession() ? (await this.session.getToken()).updateCredentialsParams : undefined // TODO
             await this.lspAuth.updateBearerToken(params!)
             return
         } else {
@@ -269,9 +267,13 @@ export class AuthUtil {
         }
     }
 
-    private async refreshState(state: AuthState = this.getAuthState()) {
-        if (state === 'expired') {
+    private async refreshState(state = this.getAuthState()) {
+        if (state === AuthStates.EXPIRED || state === AuthStates.NOT_CONNECTED) {
             this.lspAuth.deleteBearerToken()
+        }
+        if (state === AuthStates.CONNECTED) {
+            const bearerTokenParams = (await this.session.getToken()).updateCredentialsParams
+            await this.lspAuth.updateBearerToken(bearerTokenParams)
         }
 
         vsCodeState.isFreeTierLimitReached = false

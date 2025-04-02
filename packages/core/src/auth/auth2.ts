@@ -37,6 +37,27 @@ import { LanguageClient } from 'vscode-languageclient'
 import { getLogger } from '../shared/logger/logger'
 import { ToolkitError } from '../shared/errors'
 
+export const AuthStates = {
+    NOT_CONNECTED: 'notConnected',
+    CONNECTED: 'connected',
+    EXPIRED: 'expired',
+} as const
+export type AuthState = (typeof AuthStates)[keyof typeof AuthStates]
+
+export type AuthStateEvent = { id: string; state: AuthState | 'refreshed' }
+
+export const LoginTypes = {
+    SSO: 'sso',
+    IAM: 'iam',
+} as const
+export type LoginType = (typeof LoginTypes)[keyof typeof LoginTypes]
+
+interface BaseLogin {
+    readonly loginType: LoginType
+}
+
+export type Login = IamLogin | SsoLogin
+
 export const notificationTypes = {
     updateBearerToken: new RequestType<UpdateCredentialsRequest, ResponseMessage, Error>(
         'aws/credentials/token/update'
@@ -161,19 +182,11 @@ export class LanguageClientAuth {
     }
 }
 
-export type AuthStateEvent = { id: string; state: AuthState | 'refreshed' }
-
-interface BaseLogin {
-    readonly type: string
-}
-
-export type Login = IamLogin | SsoLogin
-
 /**
  * TODO: Manages an IAM Credentials connection.
  */
 export class IamLogin implements BaseLogin {
-    readonly type = 'iam'
+    readonly loginType = LoginTypes.IAM
 
     constructor() {}
 }
@@ -182,13 +195,13 @@ export class IamLogin implements BaseLogin {
  * Manages an SSO connection.
  */
 export class SsoLogin implements BaseLogin {
-    readonly type = 'sso'
+    readonly loginType = LoginTypes.SSO
     private readonly eventEmitter = new vscode.EventEmitter<AuthStateEvent>()
 
     // Cached information for easy reference. All can be easily retrieved or deduced
     // from the identity server.
     private ssoTokenId: string | undefined
-    private connectionState: AuthState = 'notConnected'
+    private connectionState: AuthState = AuthStates.NOT_CONNECTED
     private _data: { startUrl: string; region: string } | undefined
 
     private cancellationToken: CancellationTokenSource | undefined
@@ -210,7 +223,7 @@ export class SsoLogin implements BaseLogin {
     }
 
     async reauthenticate() {
-        if (this.connectionState === 'notConnected') {
+        if (this.connectionState === AuthStates.NOT_CONNECTED) {
             throw new ToolkitError('Cannot reauthenticate a non-existant SSO connection.')
         }
         return this._getSsoToken(true)
@@ -223,7 +236,7 @@ export class SsoLogin implements BaseLogin {
         if (this.ssoTokenId) {
             await this.lspAuth.invalidateSsoToken(this.ssoTokenId)
         }
-        this.updateConnectionState('notConnected')
+        this.updateConnectionState(AuthStates.NOT_CONNECTED)
         this._data = undefined
         // TODO: DeleteProfile api in Identity Service (this doesn't exist yet)
     }
@@ -307,13 +320,13 @@ export class SsoLogin implements BaseLogin {
                 case AwsErrorCodes.E_CANCELLED:
                 case AwsErrorCodes.E_SSO_SESSION_NOT_FOUND:
                 case AwsErrorCodes.E_PROFILE_NOT_FOUND:
-                    this.updateConnectionState('notConnected')
+                    this.updateConnectionState(AuthStates.NOT_CONNECTED)
                     break
                 case AwsErrorCodes.E_CANNOT_REFRESH_SSO_TOKEN:
-                    this.updateConnectionState('expired')
+                    this.updateConnectionState(AuthStates.EXPIRED)
                     break
                 case AwsErrorCodes.E_INVALID_SSO_TOKEN:
-                    this.updateConnectionState('notConnected')
+                    this.updateConnectionState(AuthStates.NOT_CONNECTED)
                     break
                 // Uncomment once identity server emits E_NETWORK_ERROR, E_FILESYSTEM_ERROR
                 // case AwsErrorCodes.E_NETWORK_ERROR:
@@ -331,7 +344,7 @@ export class SsoLogin implements BaseLogin {
         }
 
         this.ssoTokenId = response.ssoToken.id
-        this.updateConnectionState('connected')
+        this.updateConnectionState(AuthStates.CONNECTED)
         return response
     }
 
@@ -356,7 +369,7 @@ export class SsoLogin implements BaseLogin {
                 case 'Expired':
                     // Not currently implemented on the Identity Server, but handle it
                     // if it does exist one day.
-                    this.updateConnectionState('expired')
+                    this.updateConnectionState(AuthStates.EXPIRED)
                     return
                 case 'Refreshed': {
                     this.eventEmitter.fire({ id: this.profileName, state: 'refreshed' })
@@ -366,6 +379,3 @@ export class SsoLogin implements BaseLogin {
         }
     }
 }
-
-export const AuthStates = ['notConnected', 'connected', 'expired'] as const
-export type AuthState = (typeof AuthStates)[number]

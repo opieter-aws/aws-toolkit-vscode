@@ -35,7 +35,6 @@ import { MessageActionItem, ShowMessageRequestParams } from 'vscode-languageclie
 import { activate } from './chat/activation'
 import { AmazonQResourcePaths } from './lspInstaller'
 
-    
 export const clientId = 'amazonq'
 export const clientName = oidcClientName()
 export const encryptionKey = crypto.randomBytes(32)
@@ -46,13 +45,12 @@ export async function startLanguageServer(
     extensionContext: vscode.ExtensionContext,
     resourcePaths: AmazonQResourcePaths
 ) {
-
     const toDispose = extensionContext.subscriptions
 
     const serverModule =
         '/Users/opieter/Documents/repos/language-servers/app/aws-lsp-codewhisperer-runtimes/out/token-standalone.js' // resourcePaths.lsp
 
-        const serverOptions = createServerOptions({
+    const serverOptions = createServerOptions({
         encryptionKey,
         executable: resourcePaths.node,
         serverModule,
