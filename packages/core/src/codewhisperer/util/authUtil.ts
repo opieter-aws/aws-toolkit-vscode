@@ -65,7 +65,6 @@ export class AuthUtil {
 
     async restore() {
         await this.session.restore()
-        await this.refreshState()
     }
 
     async login(startUrl: string, region: string) {
@@ -283,7 +282,7 @@ export class AuthUtil {
             Commands.tryExecute('aws.amazonq.updateReferenceLog'),
         ])
 
-        if (state === 'connected' && this.isIdcConnection()) {
+        if (state === AuthStates.CONNECTED && this.isIdcConnection()) {
             void vscode.commands.executeCommand('aws.amazonq.notifyNewCustomizations')
         }
     }
