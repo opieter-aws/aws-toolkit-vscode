@@ -36,6 +36,7 @@ import {
 import { LanguageClient } from 'vscode-languageclient'
 import { getLogger } from '../shared/logger/logger'
 import { ToolkitError } from '../shared/errors'
+import { useDeviceFlow } from './sso/ssoAccessTokenProvider'
 
 export const AuthStates = {
     NOT_CONNECTED: 'notConnected',
@@ -105,7 +106,7 @@ export class LanguageClientAuth {
                 source: tokenSource,
                 options: {
                     loginOnInvalidToken: login,
-                    authorizationFlow: AuthorizationFlowKind.DeviceCode,
+                    authorizationFlow: useDeviceFlow() ? AuthorizationFlowKind.DeviceCode : AuthorizationFlowKind.Pkce,
                 },
             } satisfies GetSsoTokenParams,
             cancellationToken
@@ -241,7 +242,6 @@ export class SsoLogin implements BaseLogin {
         // TODO: DeleteProfile api in Identity Service (this doesn't exist yet)
     }
 
-    // For migrations
     async updateProfile(opts: { startUrl: string; region: string; scopes: string[] }) {
         await this.lspAuth.updateProfile(this.profileName, opts.startUrl, opts.region, opts.scopes)
         this._data = {
@@ -365,16 +365,12 @@ export class SsoLogin implements BaseLogin {
 
     private ssoTokenChangedHandler(params: SsoTokenChangedParams) {
         if (params.ssoTokenId === this.ssoTokenId) {
-            switch (params.kind) {
-                case 'Expired':
-                    // Not currently implemented on the Identity Server, but handle it
-                    // if it does exist one day.
-                    this.updateConnectionState(AuthStates.EXPIRED)
-                    return
-                case 'Refreshed': {
-                    this.eventEmitter.fire({ id: this.profileName, state: 'refreshed' })
-                    break
-                }
+            if (params.kind === 'Expired') {
+                // Not currently implemented on the Identity Server
+                this.updateConnectionState(AuthStates.EXPIRED)
+                return
+            } else if (params.kind === 'Refreshed') {
+                this.eventEmitter.fire({ id: this.profileName, state: 'refreshed' })
             }
         }
     }
