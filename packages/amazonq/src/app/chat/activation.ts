@@ -45,8 +45,6 @@ export async function activate(context: ExtensionContext) {
         amazonq.walkthroughSecurityScanExample.register(),
         amazonq.openAmazonQWalkthrough.register(),
         amazonq.listCodeWhispererCommandsWalkthrough.register(),
-        amazonq.focusAmazonQPanel.register(),
-        amazonq.focusAmazonQPanelKeybinding.register(),
         amazonq.tryChatCodeLensCommand.register(),
         vscode.workspace.onDidChangeConfiguration(async (configurationChangeEvent) => {
             if (configurationChangeEvent.affectsConfiguration('amazonQ.workspaceIndex')) {

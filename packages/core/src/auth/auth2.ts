@@ -143,10 +143,6 @@ export class LanguageClientAuth {
         return this.client.sendRequest(listProfilesRequestType.method, {}) as Promise<ListProfilesResult>
     }
 
-    /**
-     * Returns a profile by name along with its linked sso_session.
-     * Does not currently exist as an API in the Identity Service.
-     */
     async getProfile(profileName: string) {
         const result = await this.listProfiles()
         const profile = result.profiles.find((p) => p.name === profileName)
@@ -157,17 +153,11 @@ export class LanguageClientAuth {
         return { profile, ssoSession }
     }
 
-    /**
-     * Update the bearer token used by inline suggestions.
-     */
     updateBearerToken(request: UpdateCredentialsParams) {
         this.client.info(`UpdateBearerToken: ${JSON.stringify(request)}`)
         return this.client.sendRequest(notificationTypes.updateBearerToken.method, request)
     }
 
-    /**
-     * Delete the bearer token used by inline suggestions.
-     */
     deleteBearerToken() {
         return this.client.sendNotification(notificationTypes.deleteBearerToken.method)
     }
@@ -230,9 +220,6 @@ export class SsoLogin implements BaseLogin {
         return this._getSsoToken(true)
     }
 
-    /**
-     * Restore the connection state and connection details to memory, if they exist.
-     */
     async logout() {
         if (this.ssoTokenId) {
             await this.lspAuth.invalidateSsoToken(this.ssoTokenId)
@@ -250,9 +237,6 @@ export class SsoLogin implements BaseLogin {
         }
     }
 
-    /**
-     * Restore the connection state and connection details to memory, if they exist.
-     */
     async restore() {
         const sessionData = await this.lspAuth.getProfile(this.profileName)
         const ssoSession = sessionData?.ssoSession?.settings
@@ -270,19 +254,12 @@ export class SsoLogin implements BaseLogin {
         }
     }
 
-    /**
-     * Cancels the active login flow, if one is running.
-     */
     cancelLogin() {
         this.cancellationToken?.cancel()
         this.cancellationToken?.dispose()
         this.cancellationToken = undefined
     }
 
-    /**
-     * Returns a decrypted access token and a payload to send to the `updateCredentials` API provided by
-     * the Amazon Q LSP.
-     */
     async getToken() {
         const response = await this._getSsoToken(false)
         const decryptedKey = await jose.compactDecrypt(response.ssoToken.accessToken, this.lspAuth.encryptionKey)
@@ -292,10 +269,6 @@ export class SsoLogin implements BaseLogin {
         }
     }
 
-    /**
-     * Returns the response from `getToken` LSP API and sets the connection state based on the errors/result
-     * of the call.
-     */
     private async _getSsoToken(login: boolean) {
         let response: GetSsoTokenResult
         this.cancellationToken = new CancellationTokenSource()
@@ -328,11 +301,6 @@ export class SsoLogin implements BaseLogin {
                 case AwsErrorCodes.E_INVALID_SSO_TOKEN:
                     this.updateConnectionState(AuthStates.NOT_CONNECTED)
                     break
-                // Uncomment once identity server emits E_NETWORK_ERROR, E_FILESYSTEM_ERROR
-                // case AwsErrorCodes.E_NETWORK_ERROR:
-                // case AwsErrorCodes.E_FILESYSTEM_ERROR:
-                //     // do stuff, probably nothing at all actually
-                //     break
                 default:
                     getLogger().error('SsoLogin: unknown error when requesting token: %s', err)
                     break
@@ -366,7 +334,6 @@ export class SsoLogin implements BaseLogin {
     private ssoTokenChangedHandler(params: SsoTokenChangedParams) {
         if (params.ssoTokenId === this.ssoTokenId) {
             if (params.kind === 'Expired') {
-                // Not currently implemented on the Identity Server
                 this.updateConnectionState(AuthStates.EXPIRED)
                 return
             } else if (params.kind === 'Refreshed') {
