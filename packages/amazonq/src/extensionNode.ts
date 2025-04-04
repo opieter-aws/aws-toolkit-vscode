@@ -16,6 +16,7 @@ import { registerSubmitFeedback } from 'aws-core-vscode/feedback'
 import { DevOptions } from 'aws-core-vscode/dev'
 import { Auth /* , AuthUtils, getTelemetryMetadataForConn, isAnySsoConnection*/ } from 'aws-core-vscode/auth'
 import api from './api'
+import * as amazonq from 'aws-core-vscode/amazonq'
 import { activate as activateCWChat } from './app/chat/activation'
 import { beta } from 'aws-core-vscode/dev'
 import { /* activate as activateNotifications, */ NotificationsController } from 'aws-core-vscode/notifications'
@@ -47,6 +48,9 @@ async function activateAmazonQNode(context: vscode.ExtensionContext) {
         await activateCWChat(context)
         await activateQGumby(extContext as ExtContext)
     }
+
+    amazonq.focusAmazonQPanel.register()
+    amazonq.focusAmazonQPanelKeybinding.register()
 
     const authProvider = new CommonAuthViewProvider(
         context,
