@@ -143,18 +143,21 @@ export class LanguageClientAuth {
         return this.client.sendRequest(listProfilesRequestType.method, {}) as Promise<ListProfilesResult>
     }
 
+    /**
+     * Returns a profile by name along with its linked sso_session.
+     * Does not currently exist as an API in the Identity Service.
+     */
     async getProfile(profileName: string) {
-        const result = await this.listProfiles()
-        const profile = result.profiles.find((p) => p.name === profileName)
+        const response = await this.listProfiles()
+        const profile = response.profiles.find((profile) => profile.name === profileName)
         const ssoSession = profile?.settings?.sso_session
-            ? result.ssoSessions.find((s) => s.name === profile!.settings!.sso_session)
+            ? response.ssoSessions.find((session) => session.name === profile!.settings!.sso_session)
             : undefined
 
         return { profile, ssoSession }
     }
 
     updateBearerToken(request: UpdateCredentialsParams) {
-        this.client.info(`UpdateBearerToken: ${JSON.stringify(request)}`)
         return this.client.sendRequest(notificationTypes.updateBearerToken.method, request)
     }
 
@@ -174,23 +177,13 @@ export class LanguageClientAuth {
 }
 
 /**
- * TODO: Manages an IAM Credentials connection.
- */
-export class IamLogin implements BaseLogin {
-    readonly loginType = LoginTypes.IAM
-
-    constructor() {}
-}
-
-/**
  * Manages an SSO connection.
  */
 export class SsoLogin implements BaseLogin {
     readonly loginType = LoginTypes.SSO
     private readonly eventEmitter = new vscode.EventEmitter<AuthStateEvent>()
 
-    // Cached information for easy reference. All can be easily retrieved or deduced
-    // from the identity server.
+    // Cached information from the identity server for easy reference
     private ssoTokenId: string | undefined
     private connectionState: AuthState = AuthStates.NOT_CONNECTED
     private _data: { startUrl: string; region: string } | undefined
@@ -237,6 +230,9 @@ export class SsoLogin implements BaseLogin {
         }
     }
 
+    /**
+     * Restore the connection state and connection details to memory, if they exist.
+     */
     async restore() {
         const sessionData = await this.lspAuth.getProfile(this.profileName)
         const ssoSession = sessionData?.ssoSession?.settings
@@ -254,12 +250,19 @@ export class SsoLogin implements BaseLogin {
         }
     }
 
+    /**
+     * Cancels running active login flows.
+     */
     cancelLogin() {
         this.cancellationToken?.cancel()
         this.cancellationToken?.dispose()
         this.cancellationToken = undefined
     }
 
+    /**
+     * Returns a decrypted access token and a payload to send to the `updateCredentials` API provided by
+     * the Amazon Q LSP.
+     */
     async getToken() {
         const response = await this._getSsoToken(false)
         const decryptedKey = await jose.compactDecrypt(response.ssoToken.accessToken, this.lspAuth.encryptionKey)
@@ -269,6 +272,10 @@ export class SsoLogin implements BaseLogin {
         }
     }
 
+    /**
+     * Returns the response from `getToken` LSP API and sets the connection state based on the errors/result
+     * of the call.
+     */
     private async _getSsoToken(login: boolean) {
         let response: GetSsoTokenResult
         this.cancellationToken = new CancellationTokenSource()
@@ -301,6 +308,11 @@ export class SsoLogin implements BaseLogin {
                 case AwsErrorCodes.E_INVALID_SSO_TOKEN:
                     this.updateConnectionState(AuthStates.NOT_CONNECTED)
                     break
+                // TODO: implement when identity server emits E_NETWORK_ERROR, E_FILESYSTEM_ERROR
+                // case AwsErrorCodes.E_NETWORK_ERROR:
+                // case AwsErrorCodes.E_FILESYSTEM_ERROR:
+                //     // do stuff, probably nothing at all
+                //     break
                 default:
                     getLogger().error('SsoLogin: unknown error when requesting token: %s', err)
                     break
