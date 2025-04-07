@@ -18,10 +18,6 @@ import {
     SsoTokenChangedParams,
     ssoTokenChangedRequestType,
     AwsBuilderIdSsoTokenSource,
-    ConnectionMetadata,
-    NotificationType,
-    RequestType,
-    ResponseMessage,
     UpdateCredentialsParams,
     AwsErrorCodes,
     SsoTokenSourceKind,
@@ -32,6 +28,9 @@ import {
     AuthorizationFlowKind,
     CancellationToken,
     CancellationTokenSource,
+    bearerCredentialsDeleteNotificationType,
+    bearerCredentialsUpdateRequestType,
+    SsoTokenChangedKind,
 } from '@aws/language-server-runtimes/protocol'
 import { LanguageClient } from 'vscode-languageclient'
 import { getLogger } from '../shared/logger/logger'
@@ -57,30 +56,7 @@ interface BaseLogin {
     readonly loginType: LoginType
 }
 
-export type Login = IamLogin | SsoLogin
-
-export const notificationTypes = {
-    updateBearerToken: new RequestType<UpdateCredentialsRequest, ResponseMessage, Error>(
-        'aws/credentials/token/update'
-    ),
-    deleteBearerToken: new NotificationType('aws/credentials/token/delete'),
-    getConnectionMetadata: new RequestType<undefined, ConnectionMetadata, Error>(
-        'aws/credentials/getConnectionMetadata'
-    ),
-}
-
-export interface UpdateCredentialsRequest {
-    /**
-     * Encrypted token (JWT or PASETO)
-     * The token's contents differ whether IAM or Bearer token is sent
-     */
-    data: string
-    /**
-     * Used by the runtime based language servers.
-     * Signals that this client will encrypt its credentials payloads.
-     */
-    encrypted: boolean
-}
+export type Login = SsoLogin // TODO: add IamLogin type when supported
 
 export type TokenSource = IamIdentityCenterSsoTokenSource | AwsBuilderIdSsoTokenSource
 
@@ -158,11 +134,11 @@ export class LanguageClientAuth {
     }
 
     updateBearerToken(request: UpdateCredentialsParams) {
-        return this.client.sendRequest(notificationTypes.updateBearerToken.method, request)
+        return this.client.sendRequest(bearerCredentialsUpdateRequestType.method, request)
     }
 
     deleteBearerToken() {
-        return this.client.sendNotification(notificationTypes.deleteBearerToken.method)
+        return this.client.sendNotification(bearerCredentialsDeleteNotificationType.method)
     }
 
     invalidateSsoToken(tokenId: string) {
@@ -208,7 +184,7 @@ export class SsoLogin implements BaseLogin {
 
     async reauthenticate() {
         if (this.connectionState === AuthStates.NOT_CONNECTED) {
-            throw new ToolkitError('Cannot reauthenticate a non-existant SSO connection.')
+            throw new ToolkitError('Cannot reauthenticate when not connected.')
         }
         return this._getSsoToken(true)
     }
@@ -300,13 +276,11 @@ export class SsoLogin implements BaseLogin {
                 case AwsErrorCodes.E_CANCELLED:
                 case AwsErrorCodes.E_SSO_SESSION_NOT_FOUND:
                 case AwsErrorCodes.E_PROFILE_NOT_FOUND:
+                case AwsErrorCodes.E_INVALID_SSO_TOKEN:
                     this.updateConnectionState(AuthStates.NOT_CONNECTED)
                     break
                 case AwsErrorCodes.E_CANNOT_REFRESH_SSO_TOKEN:
                     this.updateConnectionState(AuthStates.EXPIRED)
-                    break
-                case AwsErrorCodes.E_INVALID_SSO_TOKEN:
-                    this.updateConnectionState(AuthStates.NOT_CONNECTED)
                     break
                 // TODO: implement when identity server emits E_NETWORK_ERROR, E_FILESYSTEM_ERROR
                 // case AwsErrorCodes.E_NETWORK_ERROR:
@@ -345,10 +319,10 @@ export class SsoLogin implements BaseLogin {
 
     private ssoTokenChangedHandler(params: SsoTokenChangedParams) {
         if (params.ssoTokenId === this.ssoTokenId) {
-            if (params.kind === 'Expired') {
+            if (params.kind === SsoTokenChangedKind.Expired) {
                 this.updateConnectionState(AuthStates.EXPIRED)
                 return
-            } else if (params.kind === 'Refreshed') {
+            } else if (params.kind === SsoTokenChangedKind.Refreshed) {
                 this.eventEmitter.fire({ id: this.profileName, state: 'refreshed' })
             }
         }

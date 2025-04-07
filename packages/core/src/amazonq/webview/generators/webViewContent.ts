@@ -92,7 +92,7 @@ export class WebViewContentGenerator {
             const init = () => {
                 createMynahUI(acquireVsCodeApi(), ${
                     AuthUtil.instance.getAuthState() === 'connected'
-                },${featureConfigsString},${welcomeLoadCount},${disclaimerAcknowledged},${disabledCommandsString});
+                },${featureConfigsString},${welcomeLoadCount},${disclaimerAcknowledged},${disabledCommandsString},${isSMUS});
             }
         </script>
         `
