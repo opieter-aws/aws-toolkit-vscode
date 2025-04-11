@@ -19,13 +19,11 @@ import {
 import { FeatureContext, globals } from '../../shared'
 import { resetCodeWhispererGlobalVariables } from '../codewhisperer/testUtil'
 import { createSsoProfile, createTestAuth } from '../credentials/testUtil'
-import { SsoConnection } from '../../auth'
 
 const enterpriseSsoStartUrl = 'https://enterprise.awsapps.com/start'
 
 describe('CodeWhisperer-customizationUtils', function () {
     let auth: ReturnType<typeof createTestAuth>
-    let ssoConn: SsoConnection
     let featureCustomization: FeatureContext
 
     before(async function () {
@@ -35,7 +33,7 @@ describe('CodeWhisperer-customizationUtils', function () {
 
     beforeEach(async function () {
         auth = createTestAuth(globals.globalState)
-         await auth.createInvalidSsoConnection(
+        await auth.createInvalidSsoConnection(
             createSsoProfile({ startUrl: enterpriseSsoStartUrl, scopes: amazonQScopes })
         )
         featureCustomization = {
