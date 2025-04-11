@@ -25,6 +25,7 @@ import { codeWhispererClient } from 'aws-core-vscode/codewhisperer'
 import type { InlineChatEvent } from 'aws-core-vscode/codewhisperer'
 import { InlineTask } from '../controller/inlineTask'
 import { extractAuthFollowUp } from 'aws-core-vscode/amazonq'
+import { auth2 } from 'aws-core-vscode/auth'
 
 export class InlineChatProvider {
     private readonly editorContextExtractor: EditorContextExtractor
@@ -123,10 +124,8 @@ export class InlineChatProvider {
 
         const tabID = triggerEvent.tabID
 
-        const credentialsState = await AuthUtil.instance.getChatAuthState()
-        if (
-            !(credentialsState.codewhispererChat === 'connected' && credentialsState.codewhispererCore === 'connected')
-        ) {
+        const credentialsState = AuthUtil.instance.getAuthState()
+        if (credentialsState !== 'connected') {
             const { message } = extractAuthFollowUp(credentialsState)
             this.errorEmitter.fire()
             throw new ToolkitError(message)

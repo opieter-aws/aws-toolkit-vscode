@@ -102,7 +102,7 @@ describe('connection exists funcs', function () {
             { connections: [], expected: false },
             { connections: allConnections.filter((c) => c !== cwIdcConnection), expected: false },
         ].map((c) => {
-            return { ...c, kind: 'codewhisperer' }
+            return { ...c, kind: 'codecatalyst' }
         })
         const allCases = [...anyCases, ...cwIdcCases]
 

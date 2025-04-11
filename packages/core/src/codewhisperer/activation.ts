@@ -99,9 +99,7 @@ export async function activate(context: ExtContext): Promise<void> {
     // Import old CodeWhisperer settings into Amazon Q
     await CodeWhispererSettings.instance.importSettings()
 
-    // initialize AuthUtil earlier to make sure it can listen to connection change events.
     const auth = AuthUtil.instance
-    auth.initCodeWhispererHooks()
 
     // TODO: is this indirection useful?
     registerDeclaredCommands(
@@ -142,7 +140,7 @@ export async function activate(context: ExtContext): Promise<void> {
     context.extensionContext.subscriptions.push(
         // register toolkit api callback
         registerToolkitApiCallback.register(),
-        signoutCodeWhisperer.register(auth),
+        signoutCodeWhisperer.register(),
         /**
          * Configuration change
          */
@@ -153,7 +151,7 @@ export async function activate(context: ExtContext): Promise<void> {
 
             if (configurationChangeEvent.affectsConfiguration('amazonQ.showCodeWithReferences')) {
                 ReferenceLogViewProvider.instance.update()
-                if (auth.isEnterpriseSsoInUse()) {
+                if (auth.isIdcConnection()) {
                     await vscode.window
                         .showInformationMessage(
                             CodeWhispererConstants.ssoConfigAlertMessage,
@@ -168,7 +166,7 @@ export async function activate(context: ExtContext): Promise<void> {
             }
 
             if (configurationChangeEvent.affectsConfiguration('amazonQ.shareContentWithAWS')) {
-                if (auth.isEnterpriseSsoInUse()) {
+                if (auth.isIdcConnection()) {
                     await vscode.window
                         .showInformationMessage(
                             CodeWhispererConstants.ssoConfigAlertMessageShareData,
@@ -343,15 +341,12 @@ export async function activate(context: ExtContext): Promise<void> {
     // run the auth startup code with context for telemetry
     await telemetry.function_call.run(
         async () => {
-            await auth.restore()
-            await auth.clearExtraConnections()
-
             if (auth.isConnectionExpired()) {
                 auth.showReauthenticatePrompt().catch((e) => {
                     const defaulMsg = localize('AWS.generic.message.error', 'Failed to reauth:')
                     void logAndShowError(localize, e, 'showReauthenticatePrompt', defaulMsg)
                 })
-                if (auth.isEnterpriseSsoInUse()) {
+                if (auth.isIdcConnection()) {
                     await auth.notifySessionConfiguration()
                 }
             }
@@ -359,10 +354,10 @@ export async function activate(context: ExtContext): Promise<void> {
         { emit: false, functionId: { name: 'activateCwCore' } }
     )
 
-    if (auth.isValidEnterpriseSsoInUse()) {
+    if (auth.isIdcConnection() && auth.isConnected()) {
         await notifyNewCustomizations()
     }
-    if (auth.isBuilderIdInUse()) {
+    if (auth.isBuilderIdConnection()) {
         await CodeScansState.instance.setScansEnabled(false)
     }
 
@@ -377,8 +372,8 @@ export async function activate(context: ExtContext): Promise<void> {
         return (
             (isScansEnabled ?? CodeScansState.instance.isScansEnabled()) &&
             !CodeScansState.instance.isMonthlyQuotaExceeded() &&
-            auth.isConnectionValid() &&
-            !auth.isBuilderIdInUse() &&
+            auth.isConnected() &&
+            !auth.isBuilderIdConnection() &&
             editor &&
             editor.document.uri.scheme === 'file' &&
             securityScanLanguageContext.isLanguageSupported(editor.document.languageId)

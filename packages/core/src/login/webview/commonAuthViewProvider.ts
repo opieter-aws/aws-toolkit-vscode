@@ -109,7 +109,7 @@ export class CommonAuthViewProvider implements WebviewViewProvider {
                 if (authState === AuthFlowStates.REAUTHNEEDED || authState === AuthFlowStates.REAUTHENTICATING) {
                     this.webView!.server.storeMetricMetadata({
                         isReAuth: true,
-                        ...(await getTelemetryMetadataForConn(AuthUtil.instance.conn)),
+                        // ...(await getTelemetryMetadataForConn(AuthUtil.instance.conn)), // TODO: @hayemaxi Re-add metrics
                     })
                 } else {
                     this.webView!.server.storeMetricMetadata({ isReAuth: false })

@@ -967,9 +967,9 @@ export class ChatController {
 
         const tabID = triggerEvent.tabID
 
-        const credentialsState = await AuthUtil.instance.getChatAuthState()
+        const credentialsState = AuthUtil.instance.getAuthState()
 
-        if (credentialsState.codewhispererChat !== 'connected' && credentialsState.codewhispererCore !== 'connected') {
+        if (credentialsState !== 'connected') {
             await this.messenger.sendAuthNeededExceptionMessage(credentialsState, tabID, triggerID)
             return
         }
@@ -1109,10 +1109,10 @@ export class ChatController {
 
         const tabID = triggerEvent.tabID
 
-        const credentialsState = await AuthUtil.instance.getChatAuthState()
+        const credentialsState = AuthUtil.instance.getAuthState()
 
         if (
-            !(credentialsState.codewhispererChat === 'connected' && credentialsState.codewhispererCore === 'connected')
+            !(credentialsState === 'connected')
         ) {
             await this.messenger.sendAuthNeededExceptionMessage(credentialsState, tabID, triggerID)
             return
@@ -1193,7 +1193,7 @@ export class ChatController {
         try {
             this.messenger.sendInitalStream(tabID, triggerID, triggerPayload.documentReferences)
             this.telemetryHelper.setConversationStreamStartTime(tabID)
-            if (isSsoConnection(AuthUtil.instance.conn)) {
+            if (AuthUtil.instance.isConnected() && AuthUtil.instance.isSsoSession()) {
                 const { $metadata, generateAssistantResponseResponse } = await session.chatSso(request)
                 response = {
                     $metadata: $metadata,

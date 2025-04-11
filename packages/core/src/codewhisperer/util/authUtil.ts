@@ -17,7 +17,7 @@ import { showAmazonQWalkthroughOnce } from '../../amazonq/onboardingPage/walkthr
 import { setContext } from '../../shared/vscode/setContext'
 import { openUrl } from '../../shared/utilities/vsCodeUtils'
 import { telemetry } from '../../shared/telemetry/telemetry'
-import { AuthStateEvent, AuthStates, LanguageClientAuth, LoginTypes, SsoLogin } from '../../auth/auth2'
+import { AuthStateEvent, LanguageClientAuth, LoginTypes, SsoLogin } from '../../auth/auth2'
 import { builderIdStartUrl } from '../../auth/sso/constants'
 import { VSCODE_EXTENSION_ID } from '../../shared/extensions'
 
@@ -104,11 +104,11 @@ export class AuthUtil {
     }
 
     isConnected() {
-        return this.getAuthState() === AuthStates.CONNECTED
+        return this.getAuthState() === 'connected'
     }
 
     isConnectionExpired() {
-        return this.getAuthState() === AuthStates.EXPIRED
+        return this.getAuthState() === 'expired'
     }
 
     isBuilderIdConnection() {
@@ -124,9 +124,9 @@ export class AuthUtil {
     }
 
     public async setVscodeContextProps(state = this.getAuthState()) {
-        await setContext('aws.codewhisperer.connected', state === AuthStates.CONNECTED)
-        await setContext('aws.amazonq.showLoginView', state !== AuthStates.CONNECTED) // Login view also handles expired state.
-        await setContext('aws.codewhisperer.connectionExpired', state === AuthStates.EXPIRED)
+        await setContext('aws.codewhisperer.connected', state === 'connected')
+        await setContext('aws.amazonq.showLoginView', state !== 'connected') // Login view also handles expired state.
+        await setContext('aws.codewhisperer.connectionExpired', state === 'expired')
     }
 
     private reauthenticatePromptShown: boolean = false
@@ -214,10 +214,10 @@ export class AuthUtil {
     }
 
     private async refreshState(state = this.getAuthState()) {
-        if (state === AuthStates.EXPIRED || state === AuthStates.NOT_CONNECTED) {
+        if (state === 'expired' || state === 'notConnected') {
             this.lspAuth.deleteBearerToken()
         }
-        if (state === AuthStates.CONNECTED) {
+        if (state === 'connected') {
             const bearerTokenParams = (await this.session.getToken()).updateCredentialsParams
             await this.lspAuth.updateBearerToken(bearerTokenParams)
         }
@@ -229,7 +229,7 @@ export class AuthUtil {
             Commands.tryExecute('aws.amazonq.updateReferenceLog'),
         ])
 
-        if (state === AuthStates.CONNECTED && this.isIdcConnection()) {
+        if (state === 'connected' && this.isIdcConnection()) {
             void vscode.commands.executeCommand('aws.amazonq.notifyNewCustomizations')
         }
     }

@@ -176,11 +176,7 @@ describe('Controller - Doc Generation', () => {
             configurable: true,
         })
 
-        sandbox.stub(AuthUtil.instance, 'getChatAuthState').resolves({
-            codewhispererCore: 'connected',
-            codewhispererChat: 'connected',
-            amazonQ: 'connected',
-        })
+        sandbox.stub(AuthUtil.instance, 'getAuthState').returns('connected')
         sandbox.stub(FileSystem.prototype, 'exists').resolves(false)
         if (isMultiTabs) {
             const secondSession = await createCodeGenState(sandbox, secondTabID, secondConversationID, secondUploadID)

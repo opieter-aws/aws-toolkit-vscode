@@ -3,13 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import * as vscode from 'vscode'
-import {
-    AwsConnection,
-    Connection,
-    SsoConnection,
-    getTelemetryMetadataForConn,
-    isSsoConnection,
-} from '../../../../auth/connection'
+import { AwsConnection, SsoConnection } from '../../../../auth/connection'
 import { AuthUtil } from '../../../../codewhisperer/util/authUtil'
 import { CommonAuthWebview } from '../backend'
 import { awsIdSignIn } from '../../../../codewhisperer/util/showSsoPrompt'
@@ -70,9 +64,9 @@ export class AmazonQLoginWebview extends CommonAuthWebview {
                 authEnabledFeatures: 'codewhisperer',
                 isReAuth: false,
             })
-
-            const conn = await awsIdSignIn()
-            this.storeMetricMetadata(await getTelemetryMetadataForConn(conn))
+            await awsIdSignIn()
+            // this.storeMetricMetadata(await getTelemetryMetadataForConn(conn))
+            // TODO: @hayemaxi
 
             void vscode.window.showInformationMessage('AmazonQ: Successfully connected to AWS Builder ID')
         })
@@ -88,8 +82,9 @@ export class AmazonQLoginWebview extends CommonAuthWebview {
                 isReAuth: false,
             })
 
-            const conn = await connectToEnterpriseSso(startUrl, region)
-            this.storeMetricMetadata(await getTelemetryMetadataForConn(conn))
+            await connectToEnterpriseSso(startUrl, region)
+            // this.storeMetricMetadata(await getTelemetryMetadataForConn(conn))
+            // TODO: @hayemaxi
 
             void vscode.window.showInformationMessage('AmazonQ: Successfully connected to AWS IAM Identity Center')
         })
@@ -106,26 +101,28 @@ export class AmazonQLoginWebview extends CommonAuthWebview {
                 throw new ToolkitError('Cannot reauthenticate non-existant connection.')
             }
 
-            const conn = AuthUtil.instance.conn
-            if (!isSsoConnection(conn)) {
-                getLogger().error('amazon Q reauthenticate called, but the connection is not SSO')
-                throw new ToolkitError('Cannot reauthenticate non-SSO connection.')
-            }
+            // const conn = AuthUtil.instance.connection
+            // TODO: Handle IAM credentials
+            // if (!isSsoConnection(conn)) {
+            //     getLogger().error('amazon Q reauthenticate called, but the connection is not SSO')
+            //     throw new ToolkitError('Cannot reauthenticate non-SSO connection.')
+            // }
 
             /**
              * IMPORTANT: During this process {@link this.onActiveConnectionModified} is triggered. This
              * causes the reauth page to refresh before the user is actually done the whole reauth flow.
              */
             this.reauthError = await this.ssoSetup('reauthenticateAmazonQ', async () => {
-                this.storeMetricMetadata({
-                    authEnabledFeatures: this.getAuthEnabledFeatures(conn),
-                    isReAuth: true,
-                    ...(await getTelemetryMetadataForConn(conn)),
-                })
+                // TODO: Re-add metrics
+                // this.storeMetricMetadata({
+                //     authEnabledFeatures: this.getAuthEnabledFeatures(conn),
+                //     isReAuth: true,
+                //     ...(await getTelemetryMetadataForConn(conn)),
+                // })
                 await AuthUtil.instance.reauthenticate()
-                this.storeMetricMetadata({
-                    ...(await getTelemetryMetadataForConn(conn)),
-                })
+                // this.storeMetricMetadata({
+                //     ...(await getTelemetryMetadataForConn(conn)),
+                // })
             })
         } finally {
             this.isReauthenticating = false
@@ -143,10 +140,6 @@ export class AmazonQLoginWebview extends CommonAuthWebview {
         return this.reauthError
     }
 
-    async getActiveConnection(): Promise<Connection | undefined> {
-        return AuthUtil.instance.conn
-    }
-
     /**
      * `true` if the actual reauth flow is in progress.
      *
@@ -158,11 +151,10 @@ export class AmazonQLoginWebview extends CommonAuthWebview {
     isReauthenticating: boolean = false
     private authState: AuthFlowState = 'LOGIN'
     override async refreshAuthState(): Promise<void> {
-        const featureAuthStates = await AuthUtil.instance.getChatAuthState()
-        if (featureAuthStates.amazonQ === 'expired') {
+        if (AuthUtil.instance.getAuthState() === 'expired') {
             this.authState = this.isReauthenticating ? 'REAUTHENTICATING' : 'REAUTHNEEDED'
             return
-        } else if (featureAuthStates.amazonQ === 'pendingProfileSelection') {
+        } else if (featureAuthStates.amazonQ === 'pendingProfileSelection') { // TODO: @hayemaxi new auth state was introduced
             this.authState = 'PENDING_PROFILE_SELECTION'
             // possible that user starts with "profile selection" state therefore the timeout for auth flow should be disposed otherwise will emit failure
             this.loadMetadata?.loadTimeout?.dispose()
@@ -182,9 +174,8 @@ export class AmazonQLoginWebview extends CommonAuthWebview {
 
     @withTelemetryContext({ name: 'signout', class: className })
     override async signout(): Promise<void> {
-        const conn = AuthUtil.instance.secondaryAuth.activeConnection
-        if (!isSsoConnection(conn)) {
-            throw new ToolkitError(`Cannot signout non-SSO connection, type is: ${conn?.type}`)
+        if (!AuthUtil.instance.isSsoSession()) {
+            throw new ToolkitError(`Cannot signout non-SSO connection`)
         }
 
         this.storeMetricMetadata({
@@ -194,7 +185,7 @@ export class AmazonQLoginWebview extends CommonAuthWebview {
             result: 'Cancelled',
         })
 
-        await AuthUtil.instance.secondaryAuth.deleteConnection()
+        await AuthUtil.instance.logout()
         this.reauthError = undefined
 
         this.emitAuthMetric()
@@ -246,7 +237,7 @@ export class AmazonQLoginWebview extends CommonAuthWebview {
     private setupConnectionEventEmitter(): void {
         // allows the frontend to listen to Amazon Q auth events from the backend
         const codeWhispererConnectionChanged = createThrottle(() => this.onActiveConnectionModified.fire())
-        AuthUtil.instance.secondaryAuth.onDidChangeActiveConnection(codeWhispererConnectionChanged)
+        AuthUtil.instance.onDidChangeConnectionState(codeWhispererConnectionChanged)
         AuthUtil.instance.regionProfileManager.onDidChangeRegionProfile(codeWhispererConnectionChanged)
 
         /**

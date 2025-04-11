@@ -35,7 +35,7 @@ describe('CodeWhisperer-customizationUtils', function () {
 
     beforeEach(async function () {
         auth = createTestAuth(globals.globalState)
-        ssoConn = await auth.createInvalidSsoConnection(
+         await auth.createInvalidSsoConnection(
             createSsoProfile({ startUrl: enterpriseSsoStartUrl, scopes: amazonQScopes })
         )
         featureCustomization = {
@@ -50,7 +50,6 @@ describe('CodeWhisperer-customizationUtils', function () {
         sinon.stub(AuthUtil.instance, 'isConnectionExpired').returns(false)
         sinon.stub(AuthUtil.instance, 'isConnected').returns(true)
         sinon.stub(AuthUtil.instance, 'isCustomizationFeatureEnabled').value(true)
-        sinon.stub(AuthUtil.instance, 'conn').value(ssoConn)
 
         await resetCodeWhispererGlobalVariables()
     })
@@ -60,14 +59,14 @@ describe('CodeWhisperer-customizationUtils', function () {
     })
 
     it('Returns baseCustomization when not SSO', async function () {
-        sinon.stub(AuthUtil.instance, 'isValidEnterpriseSsoInUse').returns(false)
+        sinon.stub(AuthUtil.instance, 'isIdcConnection').returns(false)
         const customization = getSelectedCustomization()
 
         assert.strictEqual(customization.name, baseCustomization.name)
     })
 
     it('Returns selectedCustomization when customization manually selected', async function () {
-        sinon.stub(AuthUtil.instance, 'isValidEnterpriseSsoInUse').returns(true)
+        sinon.stub(AuthUtil.instance, 'isIdcConnection').returns(true)
 
         const selectedCustomization: Customization = {
             arn: 'selectedCustomizationArn',

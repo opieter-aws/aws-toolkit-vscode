@@ -37,6 +37,7 @@ export class AmazonQChatViewProvider implements WebviewViewProvider {
         registerAssetsHttpsFileSystem(extensionContext)
         this.webViewContentGenerator = new WebViewContentGenerator()
 
+        // TODO: @hayemaxi how to deal
         AuthUtil.instance.regionProfileManager.onDidChangeRegionProfile(async () => {
             if (this.webView) {
                 this.webView.html = await this.webViewContentGenerator.generate(

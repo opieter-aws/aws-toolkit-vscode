@@ -22,4 +22,5 @@ export {
 export { Auth } from './auth'
 export { CredentialsStore } from './credentials/store'
 export { LoginManager } from './deprecated/loginManager'
-export * as AuthUtils from './utils'
+export * as authUtils from './utils'
+export * as auth2 from './auth2'

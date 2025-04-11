@@ -90,13 +90,15 @@ export class WebViewContentGenerator {
         // only show profile card when the two conditions
         //  1. profile count >= 2
         //  2. not default (fallback) which has empty arn
+
+        // TODO: @hayemaxi how to deal with removed regionProfileManager?
         let regionProfile: RegionProfile | undefined = AuthUtil.instance.regionProfileManager.activeRegionProfile
         if (AuthUtil.instance.regionProfileManager.profiles.length === 1) {
             regionProfile = undefined
         }
 
         const regionProfileString: string = JSON.stringify(regionProfile)
-        const authState = (await AuthUtil.instance.getChatAuthState()).amazonQ
+        const authState = AuthUtil.instance.getAuthState()
 
         return `
         <script type="text/javascript" src="${javascriptEntrypoint.toString()}" defer onload="init()"></script>
