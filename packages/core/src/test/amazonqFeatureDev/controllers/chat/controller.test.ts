@@ -142,7 +142,6 @@ describe('Controller', () => {
         })
 
         sinon.stub(AuthUtil.instance, 'getAuthState').returns('connected')
-
     })
 
     afterEach(() => {

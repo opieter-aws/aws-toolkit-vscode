@@ -43,7 +43,7 @@ function getAmazonQCodeWhispererNodes() {
         return [createSignIn(), createLearnMore()]
     }
 
-    if (AuthUtil.instance.isConnected() && AuthUtil.instance.requireProfileSelection()) {
+    if (AuthUtil.instance.isConnected() && AuthUtil.instance.regionProfileManager.requireProfileSelection()) {
         return []
     }
 

@@ -336,7 +336,7 @@ export class RegionProfileManager {
     }
 
     async createQClient(region: string, endpoint: string): Promise<CodeWhispererUserClient> {
-        const token = AuthUtil.instance.getToken()
+        const token = await AuthUtil.instance.getToken()
         const serviceOption: ServiceOptions = {
             apiConfig: userApiConfig,
             region: region,

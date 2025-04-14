@@ -66,7 +66,7 @@ export class AmazonQLoginWebview extends CommonAuthWebview {
             })
             await awsIdSignIn()
             // this.storeMetricMetadata(await getTelemetryMetadataForConn(conn))
-            // TODO: @hayemaxi
+            // TODO: @opieter re-add metrics
 
             void vscode.window.showInformationMessage('AmazonQ: Successfully connected to AWS Builder ID')
         })
@@ -84,7 +84,7 @@ export class AmazonQLoginWebview extends CommonAuthWebview {
 
             await connectToEnterpriseSso(startUrl, region)
             // this.storeMetricMetadata(await getTelemetryMetadataForConn(conn))
-            // TODO: @hayemaxi
+            // TODO: @opieter re-add metrics
 
             void vscode.window.showInformationMessage('AmazonQ: Successfully connected to AWS IAM Identity Center')
         })
@@ -110,7 +110,7 @@ export class AmazonQLoginWebview extends CommonAuthWebview {
              * causes the reauth page to refresh before the user is actually done the whole reauth flow.
              */
             this.reauthError = await this.ssoSetup('reauthenticateAmazonQ', async () => {
-                // TODO: Re-add metrics
+                // TODO: @ opieter Re-add metrics
                 // this.storeMetricMetadata({
                 //     authEnabledFeatures: this.getAuthEnabledFeatures(conn),
                 //     isReAuth: true,
