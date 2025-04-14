@@ -113,6 +113,7 @@ export const getSelectedCustomization = (): Customization => {
 }
 
 // TODO: @hayemaxi Do NOT use AuthUtil.instance.profileName, migrate the old setting and use a single value instead of a map
+// TODO: refactor to only ever have 1 customization
 
 /**
  * @param customization customization to select

@@ -8,7 +8,13 @@ import * as localizedText from '../../shared/localizedText'
 import * as nls from 'vscode-nls'
 import { ToolkitError } from '../../shared/errors'
 import { AmazonQPromptSettings } from '../../shared/settings'
-import { scopesCodeWhispererCore, scopesCodeWhispererChat, scopesFeatureDev, scopesGumby } from '../../auth/connection'
+import {
+    scopesCodeWhispererCore,
+    scopesCodeWhispererChat,
+    scopesFeatureDev,
+    scopesGumby,
+    TelemetryMetadata,
+} from '../../auth/connection'
 import { getLogger } from '../../shared/logger/logger'
 import { Commands } from '../../shared/vscode/commands2'
 import { vsCodeState } from '../models/model'
@@ -20,6 +26,7 @@ import { telemetry } from '../../shared/telemetry/telemetry'
 import { AuthStateEvent, LanguageClientAuth, LoginTypes, SsoLogin } from '../../auth/auth2'
 import { builderIdStartUrl } from '../../auth/sso/constants'
 import { VSCODE_EXTENSION_ID } from '../../shared/extensions'
+import { RegionProfileManager } from '../region/regionProfileManager'
 
 const localize = nls.loadMessageBundle()
 
@@ -34,6 +41,7 @@ export const amazonQScopes = [...codeWhispererChatScopes, ...scopesGumby, ...sco
  */
 export class AuthUtil {
     public readonly profileName = VSCODE_EXTENSION_ID.amazonq
+    public readonly regionProfileManager: RegionProfileManager
 
     // IAM login currently not supported
     private session: SsoLogin
@@ -53,6 +61,11 @@ export class AuthUtil {
     private constructor(private readonly lspAuth: LanguageClientAuth) {
         this.session = new SsoLogin(this.profileName, this.lspAuth)
         this.onDidChangeConnectionState((e: AuthStateEvent) => this.stateChangeHandler(e))
+
+        this.regionProfileManager = new RegionProfileManager()
+        this.regionProfileManager.onDidChangeRegionProfile(async () => {
+            await this.setVscodeContextProps()
+        })
     }
 
     isSsoSession() {
@@ -116,16 +129,44 @@ export class AuthUtil {
     }
 
     isIdcConnection() {
-        return this.connection?.startUrl && this.connection?.startUrl !== builderIdStartUrl
+        return Boolean(this.connection?.startUrl && this.connection?.startUrl !== builderIdStartUrl)
     }
 
     onDidChangeConnectionState(handler: (e: AuthStateEvent) => any) {
         return this.session.onDidChangeConnectionState(handler)
     }
 
+    async getTelemetryMetadata(): Promise<TelemetryMetadata> {
+        if (!this.isConnected()) {
+            return {
+                id: 'undefined',
+            }
+        }
+
+        if (this.isSsoSession()) {
+            const ssoSessionDetails = (await this.session.getProfile()).ssoSession?.settings
+            return {
+                authScopes: ssoSessionDetails?.sso_registration_scopes?.join(','),
+                credentialSourceId: AuthUtil.instance.isBuilderIdConnection() ? 'awsId' : 'iamIdentityCenter',
+                credentialStartUrl: AuthUtil.instance.connection?.startUrl,
+                awsRegion: AuthUtil.instance.connection?.region,
+                ssoRegistrationExpiresAt: undefined,
+                ssoRegistrationClientId: undefined,
+            }
+        } else if (!AuthUtil.instance.isSsoSession) {
+            return {
+                credentialSourceId: 'sharedCredentials',
+            }
+        }
+
+        throw new Error('getTelemetryMetadataForConn() called with unknown connection type')
+    }
+
     public async setVscodeContextProps(state = this.getAuthState()) {
         await setContext('aws.codewhisperer.connected', state === 'connected')
-        await setContext('aws.amazonq.showLoginView', state !== 'connected') // Login view also handles expired state.
+        const showAmazonQLoginView = !this.isConnected() || this.isConnectionExpired() || this.requireProfileSelection()
+        await setContext('aws.amazonq.showLoginView', showAmazonQLoginView)
+        await setContext('aws.amazonq.connectedSsoIdc', this.isIdcConnection())
         await setContext('aws.codewhisperer.connectionExpired', state === 'expired')
     }
 
@@ -215,9 +256,15 @@ export class AuthUtil {
 
     private async refreshState(state = this.getAuthState()) {
         if (state === 'expired' || state === 'notConnected') {
+            if (this.isIdcConnection()) {
+                await this.regionProfileManager.invalidateProfile(this.regionProfileManager.activeRegionProfile?.arn)
+            }
             this.lspAuth.deleteBearerToken()
         }
         if (state === 'connected') {
+            if (this.isIdcConnection()) {
+                await this.regionProfileManager.restoreProfileSelection()
+            }
             const bearerTokenParams = (await this.session.getToken()).updateCredentialsParams
             await this.lspAuth.updateBearerToken(bearerTokenParams)
         }

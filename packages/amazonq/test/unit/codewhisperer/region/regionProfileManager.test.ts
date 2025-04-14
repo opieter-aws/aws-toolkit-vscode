@@ -67,7 +67,7 @@ describe('RegionProfileManager', function () {
             }
             const createClientStub = sinon.stub(sut, 'createQClient').resolves(mockClient)
 
-            const r = await sut.listRegionProfile()
+            const r = await sut.listRegionProfiles()
 
             assert.strictEqual(r.length, 2)
             assert.deepStrictEqual(r, [
@@ -183,7 +183,7 @@ describe('RegionProfileManager', function () {
         })
 
         it(`restoreRegionProfile`, async function () {
-            sinon.stub(sut, 'listRegionProfile').resolves([profileFoo])
+            sinon.stub(sut, 'listRegionProfiles').resolves([profileFoo])
             await setupConnection('idc')
             const conn = authUtil.conn
             if (!conn) {

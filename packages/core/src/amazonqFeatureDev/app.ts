@@ -107,7 +107,6 @@ export function init(appContext: AmazonQAppInitContext) {
         return debouncedEvent()
     })
 
-    // TODO: @hayemaxi
     AuthUtil.instance.regionProfileManager.onDidChangeRegionProfile(() => {
         return debouncedEvent()
     })

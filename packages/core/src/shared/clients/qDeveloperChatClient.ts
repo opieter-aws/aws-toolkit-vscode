@@ -9,8 +9,10 @@ import { ConfiguredRetryStrategy } from '@smithy/util-retry'
 
 // Create a client for featureDev streaming based off of aws sdk v3
 export async function createQDeveloperStreamingClient(): Promise<QDeveloperStreaming> {
+    throw new Error('Do not call this function until IAM is supported by LSP identity server')
+
     const cwsprConfig = getCodewhispererConfig()
-    const credentials = undefined // TODO: @hayemaxi how to deal?
+    const credentials = undefined
     const streamingClient = new QDeveloperStreaming({
         region: cwsprConfig.region,
         endpoint: cwsprConfig.endpoint,

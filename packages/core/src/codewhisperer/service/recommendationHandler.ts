@@ -171,7 +171,7 @@ export class RecommendationHandler {
         autoTriggerType?: CodewhispererAutomatedTriggerType,
         pagination: boolean = true,
         page: number = 0,
-        generate: boolean = false // isIamConnection(AuthUtil.instance.connection) TODO: @hayemaxi can we keep this for now?
+        generate: boolean = false
     ): Promise<GetRecommendationsResponse> {
         let invocationResult: 'Succeeded' | 'Failed' = 'Failed'
         let errorMessage: string | undefined = undefined

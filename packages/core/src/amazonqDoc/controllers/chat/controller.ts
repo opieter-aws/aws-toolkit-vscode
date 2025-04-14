@@ -114,7 +114,6 @@ export class DocController {
         this.chatControllerMessageListeners.openDiff.event(async (data) => {
             return await this.openDiff(data)
         })
-        // TODO: @hayemaxi
         AuthUtil.instance.regionProfileManager.onDidChangeRegionProfile(() => {
             this.sessionStorage.deleteAllSessions()
         })

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import * as vscode from 'vscode'
-import { AwsConnection, SsoConnection } from '../../../../auth/connection'
+import { AwsConnection, SsoConnection, getTelemetryMetadataForConn } from '../../../../auth/connection'
 import { AuthUtil } from '../../../../codewhisperer/util/authUtil'
 import { CommonAuthWebview } from '../backend'
 import { awsIdSignIn } from '../../../../codewhisperer/util/showSsoPrompt'
@@ -100,13 +100,10 @@ export class AmazonQLoginWebview extends CommonAuthWebview {
                 getLogger().error('amazon Q reauthenticate called on a non-existant connection')
                 throw new ToolkitError('Cannot reauthenticate non-existant connection.')
             }
-
-            // const conn = AuthUtil.instance.connection
-            // TODO: Handle IAM credentials
-            // if (!isSsoConnection(conn)) {
-            //     getLogger().error('amazon Q reauthenticate called, but the connection is not SSO')
-            //     throw new ToolkitError('Cannot reauthenticate non-SSO connection.')
-            // }
+            if (!AuthUtil.instance.isSsoSession()) {
+                getLogger().error('amazon Q reauthenticate called, but the connection is not SSO')
+                throw new ToolkitError('Cannot reauthenticate non-SSO connection.')
+            }
 
             /**
              * IMPORTANT: During this process {@link this.onActiveConnectionModified} is triggered. This
@@ -154,7 +151,10 @@ export class AmazonQLoginWebview extends CommonAuthWebview {
         if (AuthUtil.instance.getAuthState() === 'expired') {
             this.authState = this.isReauthenticating ? 'REAUTHENTICATING' : 'REAUTHNEEDED'
             return
-        } else if (featureAuthStates.amazonQ === 'pendingProfileSelection') { // TODO: @hayemaxi new auth state was introduced
+        } else if (
+            AuthUtil.instance.isConnected() &&
+            AuthUtil.instance.regionProfileManager.requireProfileSelection()
+        ) {
             this.authState = 'PENDING_PROFILE_SELECTION'
             // possible that user starts with "profile selection" state therefore the timeout for auth flow should be disposed otherwise will emit failure
             this.loadMetadata?.loadTimeout?.dispose()
@@ -179,9 +179,9 @@ export class AmazonQLoginWebview extends CommonAuthWebview {
         }
 
         this.storeMetricMetadata({
-            authEnabledFeatures: this.getAuthEnabledFeatures(conn),
+            authEnabledFeatures: 'codewhisperer',
             isReAuth: true,
-            ...(await getTelemetryMetadataForConn(conn)),
+            ...(await getTelemetryMetadataForConn()),
             result: 'Cancelled',
         })
 
@@ -214,15 +214,14 @@ export class AmazonQLoginWebview extends CommonAuthWebview {
      */
     override async listRegionProfiles(): Promise<RegionProfile[] | string> {
         try {
-            return await AuthUtil.instance.regionProfileManager.listRegionProfile()
+            return await AuthUtil.instance.regionProfileManager.listRegionProfiles()
         } catch (e) {
-            const conn = AuthUtil.instance.conn as SsoConnection | undefined
             telemetry.amazonq_didSelectProfile.emit({
                 source: 'auth',
                 amazonQProfileRegion: AuthUtil.instance.regionProfileManager.activeRegionProfile?.region ?? 'not-set',
-                ssoRegion: conn?.ssoRegion,
+                ssoRegion: AuthUtil.instance.connection?.region,
                 result: 'Failed',
-                credentialStartUrl: conn?.startUrl,
+                credentialStartUrl: AuthUtil.instance.connection?.startUrl,
                 reason: (e as Error).message,
             })
 

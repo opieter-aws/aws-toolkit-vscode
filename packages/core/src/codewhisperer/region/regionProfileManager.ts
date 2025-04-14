@@ -96,7 +96,7 @@ export class RegionProfileManager {
 
     constructor() {}
 
-    async listRegionProfile(): Promise<RegionProfile[]> {
+    async listRegionProfiles(): Promise<RegionProfile[]> {
         this._profiles = []
 
         if (!AuthUtil.instance.isConnected() || !AuthUtil.instance.isSsoSession()) {
@@ -129,7 +129,7 @@ export class RegionProfileManager {
                 availableProfiles.push(...mappedPfs)
             } catch (e) {
                 const logMsg = isAwsError(e) ? `requestId=${e.requestId}; message=${e.message}` : (e as Error).message
-                RegionProfileManager.logger.error(`failed to listRegionProfile: ${logMsg}`)
+                RegionProfileManager.logger.error(`failed to listRegionProfiles: ${logMsg}`)
                 throw e
             }
 
@@ -221,7 +221,7 @@ export class RegionProfileManager {
             return
         }
         // cross-validation
-        this.listRegionProfile()
+        this.listRegionProfiles()
             .then(async (profiles) => {
                 const r = profiles.find((it) => it.arn === previousSelected.arn)
                 if (!r) {
@@ -281,7 +281,7 @@ export class RegionProfileManager {
         const selected = this.activeRegionProfile
         let profiles: RegionProfile[] = []
         try {
-            profiles = await this.listRegionProfile()
+            profiles = await this.listRegionProfiles()
         } catch (e) {
             return [
                 {
@@ -326,6 +326,13 @@ export class RegionProfileManager {
             )
             await globals.globalState.update('aws.amazonq.regionProfiles', updatedProfiles)
         }
+    }
+
+    requireProfileSelection(): boolean {
+        if (AuthUtil.instance.isBuilderIdConnection()) {
+            return false
+        }
+        return AuthUtil.instance.isIdcConnection() && this.activeRegionProfile === undefined
     }
 
     async createQClient(region: string, endpoint: string): Promise<CodeWhispererUserClient> {

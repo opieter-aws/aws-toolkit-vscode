@@ -85,6 +85,8 @@ export type Imports = CodeWhispererUserClient.Imports
 
 export class DefaultCodeWhispererClient {
     private async createSdkClient(): Promise<CodeWhispererClient> {
+        throw new Error('Do not call this function until IAM is supported by LSP identity server')
+
         const isOptedOut = CodeWhispererSettings.instance.isOptoutEnabled()
         const cwsprConfig = getCodewhispererConfig()
         return (await globals.sdkClientBuilder.createAwsService(
@@ -92,7 +94,7 @@ export class DefaultCodeWhispererClient {
             {
                 apiConfig: apiConfig,
                 region: cwsprConfig.region,
-                credentials: undefined, // TODO: @hayemaxi does this need updating?
+                credentials: undefined,
                 endpoint: cwsprConfig.endpoint,
                 onRequestSetup: [
                     (req) => {

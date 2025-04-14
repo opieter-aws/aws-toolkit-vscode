@@ -193,6 +193,10 @@ export class SsoLogin implements BaseLogin {
         // TODO: DeleteProfile api in Identity Service (this doesn't exist yet)
     }
 
+    async getProfile() {
+        return await this.lspAuth.getProfile(this.profileName)
+    }
+
     async updateProfile(opts: { startUrl: string; region: string; scopes: string[] }) {
         await this.lspAuth.updateProfile(this.profileName, opts.startUrl, opts.region, opts.scopes)
         this._data = {
@@ -205,7 +209,7 @@ export class SsoLogin implements BaseLogin {
      * Restore the connection state and connection details to memory, if they exist.
      */
     async restore() {
-        const sessionData = await this.lspAuth.getProfile(this.profileName)
+        const sessionData = await this.getProfile()
         const ssoSession = sessionData?.ssoSession?.settings
         if (ssoSession?.sso_region && ssoSession?.sso_start_url) {
             this._data = {

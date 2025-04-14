@@ -91,7 +91,6 @@ export class WebViewContentGenerator {
         //  1. profile count >= 2
         //  2. not default (fallback) which has empty arn
 
-        // TODO: @hayemaxi how to deal with removed regionProfileManager?
         let regionProfile: RegionProfile | undefined = AuthUtil.instance.regionProfileManager.activeRegionProfile
         if (AuthUtil.instance.regionProfileManager.profiles.length === 1) {
             regionProfile = undefined
