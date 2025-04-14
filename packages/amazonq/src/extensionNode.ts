@@ -7,29 +7,19 @@ import * as vscode from 'vscode'
 import { activateAmazonQCommon, amazonQContextPrefix, deactivateCommon } from './extension'
 import { DefaultAmazonQAppInitContext } from 'aws-core-vscode/amazonq'
 import { activate as activateQGumby } from 'aws-core-vscode/amazonqGumby'
-import {
-    ExtContext,
-    globals,
-    CrashMonitoring,
-    getLogger,
-    isNetworkError,
-    isSageMaker,
-    Experiments,
-} from 'aws-core-vscode/shared'
+import { ExtContext, globals, CrashMonitoring, Experiments } from 'aws-core-vscode/shared'
 import { filetypes, SchemaService } from 'aws-core-vscode/sharedNode'
 import { updateDevMode } from 'aws-core-vscode/dev'
 import { CommonAuthViewProvider } from 'aws-core-vscode/login'
 import { isExtensionActive, VSCODE_EXTENSION_ID } from 'aws-core-vscode/utils'
 import { registerSubmitFeedback } from 'aws-core-vscode/feedback'
 import { DevOptions } from 'aws-core-vscode/dev'
-import { Auth, AuthUtils, getTelemetryMetadataForConn, isAnySsoConnection } from 'aws-core-vscode/auth'
+import { Auth } from 'aws-core-vscode/auth'
 import api from './api'
 import { activate as activateCWChat } from './app/chat/activation'
 import { activate as activateInlineChat } from './inlineChat/activation'
 import { beta } from 'aws-core-vscode/dev'
-import { activate as activateNotifications, NotificationsController } from 'aws-core-vscode/notifications'
-import { AuthState, AuthUtil } from 'aws-core-vscode/codewhisperer'
-import { telemetry, AuthUserState } from 'aws-core-vscode/telemetry'
+import { NotificationsController } from 'aws-core-vscode/notifications'
 
 export async function activate(context: vscode.ExtensionContext) {
     // IMPORTANT: No other code should be added to this function. Place it in one of the following 2 functions where appropriate.
