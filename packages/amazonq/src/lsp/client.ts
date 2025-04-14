@@ -8,14 +8,16 @@ import * as nls from 'vscode-nls'
 import * as crypto from 'crypto'
 import { LanguageClient, LanguageClientOptions } from 'vscode-languageclient'
 import { InlineCompletionManager } from '../app/inline/completion'
-import { AmazonQLspAuth, encryptionKey, notificationTypes } from './auth'
 import { AuthUtil } from 'aws-core-vscode/codewhisperer'
 import { ConnectionMetadata } from '@aws/language-server-runtimes/protocol'
 import { Settings, oidcClientName, createServerOptions, globals, Experiments, Commands } from 'aws-core-vscode/shared'
 import { activate } from './chat/activation'
 import { AmazonQResourcePaths } from './lspInstaller'
+import { auth2 } from 'aws-core-vscode/auth'
 
 const localize = nls.loadMessageBundle()
+
+export const encryptionKey = crypto.randomBytes(32)
 
 export async function startLanguageServer(
     extensionContext: vscode.ExtensionContext,
@@ -90,18 +92,15 @@ export async function startLanguageServer(
     const disposable = client.start()
     toDispose.push(disposable)
 
-    const auth = new AmazonQLspAuth(client)
-
     return client.onReady().then(async () => {
         // Request handler for when the server wants to know about the clients auth connnection. Must be registered before the initial auth init call
-        client.onRequest<ConnectionMetadata, Error>(notificationTypes.getConnectionMetadata.method, () => {
+        client.onRequest<ConnectionMetadata, Error>(auth2.notificationTypes.getConnectionMetadata.method, () => {
             return {
                 sso: {
-                    startUrl: AuthUtil.instance.auth.startUrl,
+                    startUrl: AuthUtil.instance.connection?.startUrl,
                 },
             }
         })
-        await auth.refreshConnection()
 
         if (Experiments.instance.get('amazonqLSPInline', false)) {
             const inlineManager = new InlineCompletionManager(client)
@@ -120,17 +119,5 @@ export async function startLanguageServer(
         if (Experiments.instance.get('amazonqChatLSP', false)) {
             activate(client, encryptionKey, resourcePaths.ui)
         }
-
-        const refreshInterval = auth.startTokenRefreshInterval()
-
-        toDispose.push(
-            AuthUtil.instance.auth.onDidChangeActiveConnection(async () => {
-                await auth.refreshConnection()
-            }),
-            AuthUtil.instance.auth.onDidDeleteConnection(async () => {
-                client.sendNotification(notificationTypes.deleteBearerToken.method)
-            }),
-            { dispose: () => clearInterval(refreshInterval) }
-        )
     })
 }

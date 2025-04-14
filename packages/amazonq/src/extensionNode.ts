@@ -78,49 +78,49 @@ async function activateAmazonQNode(context: vscode.ExtensionContext) {
     await setupDevMode(context)
     await beta.activate(context)
 
+    // TODO: @opieter add telemetry
+
     // TODO: Should probably emit for web as well.
     // Will the web metric look the same?
-    telemetry.auth_userState.emit({
-        passive: true,
-        result: 'Succeeded',
-        source: AuthUtils.ExtensionUse.instance.sourceForTelemetry(),
-        ...(await getAuthState()),
-    })
+    // telemetry.auth_userState.emit({
+    //     passive: true,
+    //     result: 'Succeeded',
+    //     source: AuthUtils.ExtensionUse.instance.sourceForTelemetry(),
+    //     ...(await getAuthState()),
+    // })
 
-    void activateNotifications(context, getAuthState)
+    // void activateNotifications(context, getAuthState)
 }
 
-async function getAuthState(): Promise<Omit<AuthUserState, 'source'>> {
-    let authState: AuthState = 'disconnected'
-    try {
-        // May call connection validate functions that try to refresh the token.
-        // This could result in network errors.
-        authState = (await AuthUtil.instance._getChatAuthState(false)).codewhispererChat
-    } catch (err) {
-        if (
-            isNetworkError(err) &&
-            AuthUtil.instance.conn &&
-            AuthUtil.instance.auth.getConnectionState(AuthUtil.instance.conn) === 'valid'
-        ) {
-            authState = 'connectedWithNetworkError'
-        } else {
-            throw err
-        }
-    }
-    const currConn = AuthUtil.instance.conn
-    if (currConn !== undefined && !(isAnySsoConnection(currConn) || isSageMaker())) {
-        getLogger().error(`Current Amazon Q connection is not SSO, type is: %s`, currConn?.type)
-    }
+// async function getAuthState(): Promise<Omit<AuthUserState, 'source'>> {
+//     let authState: AuthState = 'disconnected'
+//     try {
+//         // May call connection validate functions that try to refresh the token.
+//         // This could result in network errors.
+//         authState = AuthUtil.instance.getAuthState()
+//     } catch (err) {
+//         if (
+//             isNetworkError(err) &&
+//             AuthUtil.instance.isConnected()
+//         ) {
+//             authState = 'connectedWithNetworkError'
+//         } else {
+//             throw err
+//         }
+//     }
+//     if (AuthUtil.instance.isConnected() && !(AuthUtil.instance.isSsoSession() || isSageMaker())) {
+//         getLogger().error('Current Amazon Q connection is not SSO')
+//     }
 
-    return {
-        authStatus:
-            authState === 'connected' || authState === 'expired' || authState === 'connectedWithNetworkError'
-                ? authState
-                : 'notConnected',
-        authEnabledConnections: AuthUtils.getAuthFormIdsFromConnection(currConn).join(','),
-        ...(await getTelemetryMetadataForConn(currConn)),
-    }
-}
+//     return {
+//         authStatus:
+//             authState === 'connected' || authState === 'expired' || authState === 'connectedWithNetworkError'
+//                 ? authState
+//                 : 'notConnected',
+//         authEnabledConnections: AuthUtils.getAuthFormIdsFromConnection(currConn).join(','),
+//         ...(await getTelemetryMetadataForConn(currConn)),
+//     }
+// }
 
 /**
  * Some parts of this do not work in Web mode so we need to set Dev Mode up here.

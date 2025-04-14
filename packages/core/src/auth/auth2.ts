@@ -31,11 +31,26 @@ import {
     bearerCredentialsDeleteNotificationType,
     bearerCredentialsUpdateRequestType,
     SsoTokenChangedKind,
+    RequestType,
+    ResponseMessage,
+    NotificationType,
+    ConnectionMetadata,
+    getConnectionMetadataRequestType,
 } from '@aws/language-server-runtimes/protocol'
 import { LanguageClient } from 'vscode-languageclient'
 import { getLogger } from '../shared/logger/logger'
 import { ToolkitError } from '../shared/errors'
 import { useDeviceFlow } from './sso/ssoAccessTokenProvider'
+
+export const notificationTypes = {
+    updateBearerToken: new RequestType<UpdateCredentialsParams, ResponseMessage, Error>(
+        bearerCredentialsUpdateRequestType.method
+    ),
+    deleteBearerToken: new NotificationType(bearerCredentialsDeleteNotificationType.method),
+    getConnectionMetadata: new RequestType<undefined, ConnectionMetadata, Error>(
+        getConnectionMetadataRequestType.method
+    ),
+}
 
 export type AuthState = 'notConnected' | 'connected' | 'expired'
 

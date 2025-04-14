@@ -33,7 +33,6 @@ import {
 } from '../../models/constants'
 import path from 'path'
 import { telemetry } from 'aws-core-vscode/telemetry'
-import { auth2 } from 'aws-core-vscode/auth'
 
 export class ScanController {
     private readonly messenger: Messenger

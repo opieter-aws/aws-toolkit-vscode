@@ -25,7 +25,6 @@ import { codeWhispererClient } from 'aws-core-vscode/codewhisperer'
 import type { InlineChatEvent } from 'aws-core-vscode/codewhisperer'
 import { InlineTask } from '../controller/inlineTask'
 import { extractAuthFollowUp } from 'aws-core-vscode/amazonq'
-import { auth2 } from 'aws-core-vscode/auth'
 
 export class InlineChatProvider {
     private readonly editorContextExtractor: EditorContextExtractor
