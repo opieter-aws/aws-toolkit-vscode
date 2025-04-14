@@ -8,13 +8,7 @@ import * as localizedText from '../../shared/localizedText'
 import * as nls from 'vscode-nls'
 import { ToolkitError } from '../../shared/errors'
 import { AmazonQPromptSettings } from '../../shared/settings'
-import {
-    scopesCodeWhispererCore,
-    scopesCodeWhispererChat,
-    scopesFeatureDev,
-    scopesGumby,
-    TelemetryMetadata,
-} from '../../auth/connection'
+import { scopesCodeWhispererCore, scopesCodeWhispererChat, scopesFeatureDev, scopesGumby } from '../../auth/connection'
 import { getLogger } from '../../shared/logger/logger'
 import { Commands } from '../../shared/vscode/commands2'
 import { vsCodeState } from '../models/model'
@@ -136,35 +130,10 @@ export class AuthUtil {
         return this.session.onDidChangeConnectionState(handler)
     }
 
-    async getTelemetryMetadata(): Promise<TelemetryMetadata> {
-        if (!this.isConnected()) {
-            return {
-                id: 'undefined',
-            }
-        }
-
-        if (this.isSsoSession()) {
-            const ssoSessionDetails = (await this.session.getProfile()).ssoSession?.settings
-            return {
-                authScopes: ssoSessionDetails?.sso_registration_scopes?.join(','),
-                credentialSourceId: AuthUtil.instance.isBuilderIdConnection() ? 'awsId' : 'iamIdentityCenter',
-                credentialStartUrl: AuthUtil.instance.connection?.startUrl,
-                awsRegion: AuthUtil.instance.connection?.region,
-                ssoRegistrationExpiresAt: undefined,
-                ssoRegistrationClientId: undefined,
-            }
-        } else if (!AuthUtil.instance.isSsoSession) {
-            return {
-                credentialSourceId: 'sharedCredentials',
-            }
-        }
-
-        throw new Error('getTelemetryMetadataForConn() called with unknown connection type')
-    }
-
     public async setVscodeContextProps(state = this.getAuthState()) {
         await setContext('aws.codewhisperer.connected', state === 'connected')
-        const showAmazonQLoginView = !this.isConnected() || this.isConnectionExpired() || this.requireProfileSelection()
+        const showAmazonQLoginView =
+            !this.isConnected() || this.isConnectionExpired() || this.regionProfileManager.requireProfileSelection()
         await setContext('aws.amazonq.showLoginView', showAmazonQLoginView)
         await setContext('aws.amazonq.connectedSsoIdc', this.isIdcConnection())
         await setContext('aws.codewhisperer.connectionExpired', state === 'expired')
