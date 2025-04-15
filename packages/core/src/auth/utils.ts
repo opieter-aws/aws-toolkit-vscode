@@ -617,7 +617,7 @@ export async function findSsoConnections(
     return (await allConnections()).filter(predicate).filter(isIdcSsoConnection)
 }
 
-export type BuilderIdKind = 'any' | 'codewhisperer' | 'codecatalyst'
+export type BuilderIdKind = 'any' | 'codecatalyst'
 
 /**
  * Returns true if a Builder ID connection exists.

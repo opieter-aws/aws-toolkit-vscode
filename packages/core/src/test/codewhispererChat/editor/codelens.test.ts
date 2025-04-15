@@ -24,7 +24,7 @@ import {
     PressTabState,
     TryMoreExState,
 } from '../../../codewhisperer/views/lineAnnotationController'
-import { AuthState } from '../../../auth/auth2'
+import { AuthState, LanguageClientAuth } from '../../../auth/auth2'
 
 describe('TryChatCodeLensProvider', () => {
     let instance: TryChatCodeLensProvider
@@ -41,15 +41,13 @@ describe('TryChatCodeLensProvider', () => {
         // that originally would have been registered by the `core` `activate()` at some point
         tryRegister(tryChatCodeLensCommand)
         tryRegister(focusAmazonQPanel)
+        const mockLspAuth: Partial<LanguageClientAuth> = {
+            registerSsoTokenChangedHandler: sinon.stub().resolves(),
+        }
+        AuthUtil.create(mockLspAuth as LanguageClientAuth)
     })
 
     beforeEach(async function () {
-        const authUtilStub = {
-            getAuthState: () => 'connected',
-        }
-        // @ts-ignore - Accessing private field
-        AuthUtil.#instance = authUtilStub as AuthUtil
-
         isAmazonQVisibleEventEmitter = new vscode.EventEmitter<boolean>()
         isAmazonQVisibleEvent = isAmazonQVisibleEventEmitter.event
         instance = new TryChatCodeLensProvider(isAmazonQVisibleEvent, () => codeLensPosition)
@@ -65,8 +63,7 @@ describe('TryChatCodeLensProvider', () => {
     })
 
     function stubConnection(state: AuthState) {
-        const authUtilStub = AuthUtil.instance as any
-        return sinon.stub(authUtilStub, 'getAuthState').returns(state)
+        return sinon.stub(AuthUtil.instance, 'getAuthState').returns(state)
     }
 
     it('keeps returning a code lense until it hits the max times it should show', async function () {

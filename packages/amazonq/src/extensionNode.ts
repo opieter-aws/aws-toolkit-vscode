@@ -7,19 +7,24 @@ import * as vscode from 'vscode'
 import { activateAmazonQCommon, amazonQContextPrefix, deactivateCommon } from './extension'
 import { DefaultAmazonQAppInitContext } from 'aws-core-vscode/amazonq'
 import { activate as activateQGumby } from 'aws-core-vscode/amazonqGumby'
-import { ExtContext, globals, CrashMonitoring, Experiments } from 'aws-core-vscode/shared'
+import {
+    ExtContext,
+    globals,
+    CrashMonitoring /* , getLogger, isNetworkError, isSageMaker */,
+} from 'aws-core-vscode/shared'
 import { filetypes, SchemaService } from 'aws-core-vscode/sharedNode'
 import { updateDevMode } from 'aws-core-vscode/dev'
 import { CommonAuthViewProvider } from 'aws-core-vscode/login'
 import { isExtensionActive, VSCODE_EXTENSION_ID } from 'aws-core-vscode/utils'
 import { registerSubmitFeedback } from 'aws-core-vscode/feedback'
 import { DevOptions } from 'aws-core-vscode/dev'
-import { Auth } from 'aws-core-vscode/auth'
+import { Auth /* , AuthUtils, getTelemetryMetadataForConn, isAnySsoConnection*/ } from 'aws-core-vscode/auth'
 import api from './api'
 import { activate as activateCWChat } from './app/chat/activation'
-import { activate as activateInlineChat } from './inlineChat/activation'
 import { beta } from 'aws-core-vscode/dev'
-import { NotificationsController } from 'aws-core-vscode/notifications'
+import { /* activate as activateNotifications, */ NotificationsController } from 'aws-core-vscode/notifications'
+// import { AuthState, AuthUtil } from 'aws-core-vscode/codewhisperer'
+// import { telemetry, AuthUserState } from 'aws-core-vscode/telemetry'
 
 export async function activate(context: vscode.ExtensionContext) {
     // IMPORTANT: No other code should be added to this function. Place it in one of the following 2 functions where appropriate.
@@ -42,11 +47,8 @@ async function activateAmazonQNode(context: vscode.ExtensionContext) {
         extensionContext: context,
     }
 
-    if (!Experiments.instance.get('amazonqChatLSP', false)) {
-        await activateCWChat(context)
-        await activateQGumby(extContext as ExtContext)
-    }
-    activateInlineChat(context)
+    await activateCWChat(context)
+    await activateQGumby(extContext as ExtContext)
 
     const authProvider = new CommonAuthViewProvider(
         context,
@@ -68,9 +70,7 @@ async function activateAmazonQNode(context: vscode.ExtensionContext) {
     await setupDevMode(context)
     await beta.activate(context)
 
-    // TODO: @opieter add telemetry
-
-    // TODO: Should probably emit for web as well.
+    // TODO: @opieter Fix telemetry
     // Will the web metric look the same?
     // telemetry.auth_userState.emit({
     //     passive: true,
@@ -87,19 +87,21 @@ async function activateAmazonQNode(context: vscode.ExtensionContext) {
 //     try {
 //         // May call connection validate functions that try to refresh the token.
 //         // This could result in network errors.
-//         authState = AuthUtil.instance.getAuthState()
+//         authState = (await AuthUtil.instance._getChatAuthState(false)).codewhispererChat
 //     } catch (err) {
 //         if (
 //             isNetworkError(err) &&
-//             AuthUtil.instance.isConnected()
+//             AuthUtil.instance.conn &&
+//             AuthUtil.instance.auth.getConnectionState(AuthUtil.instance.conn) === 'valid'
 //         ) {
 //             authState = 'connectedWithNetworkError'
 //         } else {
 //             throw err
 //         }
 //     }
-//     if (AuthUtil.instance.isConnected() && !(AuthUtil.instance.isSsoSession() || isSageMaker())) {
-//         getLogger().error('Current Amazon Q connection is not SSO')
+//     const currConn = AuthUtil.instance.conn
+//     if (currConn !== undefined && !(isAnySsoConnection(currConn) || isSageMaker())) {
+//         getLogger().error(`Current Amazon Q connection is not SSO, type is: %s`, currConn?.type)
 //     }
 
 //     return {

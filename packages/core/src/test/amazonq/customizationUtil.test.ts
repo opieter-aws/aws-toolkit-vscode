@@ -19,6 +19,7 @@ import {
 import { FeatureContext, globals } from '../../shared'
 import { resetCodeWhispererGlobalVariables } from '../codewhisperer/testUtil'
 import { createSsoProfile, createTestAuth } from '../credentials/testUtil'
+import { LanguageClientAuth } from '../../auth/auth2'
 
 const enterpriseSsoStartUrl = 'https://enterprise.awsapps.com/start'
 
@@ -29,6 +30,10 @@ describe('CodeWhisperer-customizationUtils', function () {
     before(async function () {
         createTestAuth(globals.globalState)
         tryRegister(refreshStatusBar)
+        const mockLspAuth: Partial<LanguageClientAuth> = {
+            registerSsoTokenChangedHandler: sinon.stub().resolves(),
+        }
+        AuthUtil.create(mockLspAuth as LanguageClientAuth)
     })
 
     beforeEach(async function () {
@@ -58,6 +63,7 @@ describe('CodeWhisperer-customizationUtils', function () {
 
     it('Returns baseCustomization when not SSO', async function () {
         sinon.stub(AuthUtil.instance, 'isIdcConnection').returns(false)
+
         const customization = getSelectedCustomization()
 
         assert.strictEqual(customization.name, baseCustomization.name)
@@ -80,6 +86,8 @@ describe('CodeWhisperer-customizationUtils', function () {
     })
 
     it(`setSelectedCustomization should set to the customization provided if override option is false or not specified`, async function () {
+        sinon.stub(AuthUtil.instance, 'isIdcConnection').returns(true)
+
         await setSelectedCustomization({ arn: 'FOO' }, false)
         assert.strictEqual(getSelectedCustomization().arn, 'FOO')
 
@@ -94,6 +102,8 @@ describe('CodeWhisperer-customizationUtils', function () {
     })
 
     it(`setSelectedCustomization should only set to the customization provided once for override per customization arn if override is true`, async function () {
+        sinon.stub(AuthUtil.instance, 'isIdcConnection').returns(true)
+
         await setSelectedCustomization({ arn: 'OVERRIDE' }, true)
         assert.strictEqual(getSelectedCustomization().arn, 'OVERRIDE')
 

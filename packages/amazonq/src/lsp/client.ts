@@ -45,7 +45,7 @@ export const encryptionKey = crypto.randomBytes(32)
 export async function startLanguageServer(
     extensionContext: vscode.ExtensionContext,
     resourcePaths: AmazonQResourcePaths
-) {
+): Promise<LanguageClient> {
     const toDispose = extensionContext.subscriptions
 
     const serverModule = resourcePaths.lsp
@@ -109,87 +109,83 @@ export async function startLanguageServer(
     const disposable = client.start()
     toDispose.push(disposable)
 
-    return client.onReady().then(async () => {
-        // Request handler for when the server wants to know about the clients auth connnection. Must be registered before the initial auth init call
-        client.onRequest<ConnectionMetadata, Error>(auth2.notificationTypes.getConnectionMetadata.method, () => {
-            return {
-                sso: {
-                    startUrl: AuthUtil.instance.connection?.startUrl,
-                },
-            }
-        })
+    await client.onReady()
 
-        client.onRequest<ShowDocumentResult, Error>(ShowDocumentRequest.method, async (params: ShowDocumentParams) => {
-            try {
-                return { success: await openUrl(vscode.Uri.parse(params.uri), lspName) }
-            } catch (err: any) {
-                getLogger().error(`Failed to open document for LSP: ${lspName}, error: %s`, err)
-                return { success: false }
-            }
-        })
-
-        client.onRequest<MessageActionItem | null, Error>(
-            ShowMessageRequest.method,
-            async (params: ShowMessageRequestParams) => {
-                const actions = params.actions?.map((a) => a.title) ?? []
-                const response = await vscode.window.showInformationMessage(params.message, { modal: true }, ...actions)
-                return params.actions?.find((a) => a.title === response) ?? (undefined as unknown as null)
-            }
-        )
-
-        let promise: Promise<void> | undefined
-        let resolver: () => void = () => {}
-        client.onProgress(
-            GetSsoTokenProgressType,
-            GetSsoTokenProgressToken,
-            async (partialResult: GetSsoTokenProgress) => {
-                const decryptedKey = await jose.compactDecrypt(partialResult as unknown as string, encryptionKey)
-                const val: GetSsoTokenProgress = JSON.parse(decryptedKey.plaintext.toString())
-
-                if (val.state === 'InProgress') {
-                    if (promise) {
-                        resolver()
-                    }
-                    promise = new Promise<void>((resolve) => {
-                        resolver = resolve
-                    })
-                } else {
-                    resolver()
-                    promise = undefined
-                    return
-                }
-
-                void vscode.window.withProgress(
-                    {
-                        cancellable: true,
-                        location: vscode.ProgressLocation.Notification,
-                        title: val.message,
-                    },
-                    async (_) => {
-                        await promise
-                    }
-                )
-            }
-        )
-
-        if (Experiments.instance.get('amazonqLSPInline', false)) {
-            const inlineManager = new InlineCompletionManager(client)
-            inlineManager.registerInlineCompletion()
-            toDispose.push(
-                inlineManager,
-                Commands.register({ id: 'aws.amazonq.invokeInlineCompletion', autoconnect: true }, async () => {
-                    await vscode.commands.executeCommand('editor.action.inlineSuggest.trigger')
-                }),
-                vscode.workspace.onDidCloseTextDocument(async () => {
-                    await vscode.commands.executeCommand('aws.amazonq.rejectCodeSuggestion')
-                })
-            )
-        }
-
-        if (Experiments.instance.get('amazonqChatLSP', false)) {
-            activate(client, encryptionKey, resourcePaths.ui)
-            AuthUtil.create(new auth2.LanguageClientAuth(client, clientId, encryptionKey))
-            await AuthUtil.instance.restore()
+    // Request handler for when the server wants to know about the clients auth connnection. Must be registered before the initial auth init call
+    client.onRequest<ConnectionMetadata, Error>(auth2.notificationTypes.getConnectionMetadata.method, () => {
+        return {
+            sso: {
+                startUrl: AuthUtil.instance.connection?.startUrl,
+            },
         }
     })
+
+    client.onRequest<ShowDocumentResult, Error>(ShowDocumentRequest.method, async (params: ShowDocumentParams) => {
+        try {
+            return { success: await openUrl(vscode.Uri.parse(params.uri), lspName) }
+        } catch (err: any) {
+            getLogger().error(`Failed to open document for LSP: ${lspName}, error: %s`, err)
+            return { success: false }
+        }
+    })
+
+    client.onRequest<MessageActionItem | null, Error>(
+        ShowMessageRequest.method,
+        async (params: ShowMessageRequestParams) => {
+            const actions = params.actions?.map((a) => a.title) ?? []
+            const response = await vscode.window.showInformationMessage(params.message, { modal: true }, ...actions)
+            return params.actions?.find((a) => a.title === response) ?? (undefined as unknown as null)
+        }
+    )
+
+    let promise: Promise<void> | undefined
+    let resolver: () => void = () => {}
+    client.onProgress(GetSsoTokenProgressType, GetSsoTokenProgressToken, async (partialResult: GetSsoTokenProgress) => {
+        const decryptedKey = await jose.compactDecrypt(partialResult as unknown as string, encryptionKey)
+        const val: GetSsoTokenProgress = JSON.parse(decryptedKey.plaintext.toString())
+
+        if (val.state === 'InProgress') {
+            if (promise) {
+                resolver()
+            }
+            promise = new Promise<void>((resolve) => {
+                resolver = resolve
+            })
+        } else {
+            resolver()
+            promise = undefined
+            return
+        }
+
+        void vscode.window.withProgress(
+            {
+                cancellable: true,
+                location: vscode.ProgressLocation.Notification,
+                title: val.message,
+            },
+            async (_) => {
+                await promise
+            }
+        )
+    })
+
+    if (Experiments.instance.get('amazonqLSPInline', false)) {
+        const inlineManager = new InlineCompletionManager(client)
+        inlineManager.registerInlineCompletion()
+        toDispose.push(
+            inlineManager,
+            Commands.register({ id: 'aws.amazonq.invokeInlineCompletion', autoconnect: true }, async () => {
+                await vscode.commands.executeCommand('editor.action.inlineSuggest.trigger')
+            }),
+            vscode.workspace.onDidCloseTextDocument(async () => {
+                await vscode.commands.executeCommand('aws.amazonq.rejectCodeSuggestion')
+            })
+        )
+    }
+
+    if (Experiments.instance.get('amazonqChatLSP', false)) {
+        activate(client, encryptionKey, resourcePaths.ui)
+    }
+
+    return client
 }

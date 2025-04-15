@@ -115,13 +115,12 @@ export async function activateAmazonQCommon(context: vscode.ExtensionContext, is
 
     await initializeAuth(globals.loginManager)
 
-    if (Experiments.instance.get('amazonqLSP', false)) {
-        await activateAmazonqLsp(context)
-    }
+    await activateAmazonqLsp(context)
 
     const extContext = {
         extensionContext: context,
     }
+
     // This contains every lsp agnostic things (auth, security scan, code scan)
     await activateCodeWhisperer(extContext as ExtContext)
 
@@ -172,7 +171,7 @@ export async function activateAmazonQCommon(context: vscode.ExtensionContext, is
 
     context.subscriptions.push(
         Experiments.instance.onDidChange(async (event) => {
-            if (event.key === 'amazonqLSP' || event.key === 'amazonqChatLSP' || event.key === 'amazonqLSPInline') {
+            if (event.key === 'amazonqChatLSP' || event.key === 'amazonqLSPInline') {
                 await vscode.window
                     .showInformationMessage(
                         'Amazon Q LSP setting has changed. Reload VS Code for the changes to take effect.',
