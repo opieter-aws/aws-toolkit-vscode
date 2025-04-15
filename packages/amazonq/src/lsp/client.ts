@@ -6,17 +6,40 @@
 import vscode, { env, version } from 'vscode'
 import * as nls from 'vscode-nls'
 import * as crypto from 'crypto'
+import * as jose from 'jose'
 import { LanguageClient, LanguageClientOptions } from 'vscode-languageclient'
 import { InlineCompletionManager } from '../app/inline/completion'
 import { AuthUtil } from 'aws-core-vscode/codewhisperer'
-import { ConnectionMetadata } from '@aws/language-server-runtimes/protocol'
-import { Settings, oidcClientName, createServerOptions, globals, Experiments, Commands } from 'aws-core-vscode/shared'
+import {
+    ConnectionMetadata,
+    GetSsoTokenProgress,
+    GetSsoTokenProgressToken,
+    GetSsoTokenProgressType,
+    MessageActionItem,
+    ShowDocumentParams,
+    ShowDocumentRequest,
+    ShowDocumentResult,
+    ShowMessageRequest,
+    ShowMessageRequestParams,
+} from '@aws/language-server-runtimes/protocol'
+import {
+    Settings,
+    oidcClientName,
+    createServerOptions,
+    globals,
+    Experiments,
+    Commands,
+    openUrl,
+    getLogger,
+} from 'aws-core-vscode/shared'
 import { activate } from './chat/activation'
 import { AmazonQResourcePaths } from './lspInstaller'
 import { auth2 } from 'aws-core-vscode/auth'
 
 const localize = nls.loadMessageBundle()
 
+export const clientId = 'amazonq'
+export const clientName = oidcClientName()
 export const encryptionKey = crypto.randomBytes(32)
 
 export async function startLanguageServer(
@@ -41,8 +64,6 @@ export async function startLanguageServer(
     })
 
     const documentSelector = [{ scheme: 'file', language: '*' }]
-
-    const clientId = 'amazonq'
     const traceServerEnabled = Settings.instance.isSet(`${clientId}.trace.server`)
 
     // Options to control the language client
@@ -82,12 +103,8 @@ export async function startLanguageServer(
               }),
     }
 
-    const client = new LanguageClient(
-        clientId,
-        localize('amazonq.server.name', 'Amazon Q Language Server'),
-        serverOptions,
-        clientOptions
-    )
+    const lspName = localize('amazonq.server.name', 'Amazon Q Language Server')
+    const client = new LanguageClient(clientId, lspName, serverOptions, clientOptions)
 
     const disposable = client.start()
     toDispose.push(disposable)
@@ -101,6 +118,59 @@ export async function startLanguageServer(
                 },
             }
         })
+
+        client.onRequest<ShowDocumentResult, Error>(ShowDocumentRequest.method, async (params: ShowDocumentParams) => {
+            try {
+                return { success: await openUrl(vscode.Uri.parse(params.uri), lspName) }
+            } catch (err: any) {
+                getLogger().error(`Failed to open document for LSP: ${lspName}, error: %s`, err)
+                return { success: false }
+            }
+        })
+
+        client.onRequest<MessageActionItem | null, Error>(
+            ShowMessageRequest.method,
+            async (params: ShowMessageRequestParams) => {
+                const actions = params.actions?.map((a) => a.title) ?? []
+                const response = await vscode.window.showInformationMessage(params.message, { modal: true }, ...actions)
+                return params.actions?.find((a) => a.title === response) ?? (undefined as unknown as null)
+            }
+        )
+
+        let promise: Promise<void> | undefined
+        let resolver: () => void = () => {}
+        client.onProgress(
+            GetSsoTokenProgressType,
+            GetSsoTokenProgressToken,
+            async (partialResult: GetSsoTokenProgress) => {
+                const decryptedKey = await jose.compactDecrypt(partialResult as unknown as string, encryptionKey)
+                const val: GetSsoTokenProgress = JSON.parse(decryptedKey.plaintext.toString())
+
+                if (val.state === 'InProgress') {
+                    if (promise) {
+                        resolver()
+                    }
+                    promise = new Promise<void>((resolve) => {
+                        resolver = resolve
+                    })
+                } else {
+                    resolver()
+                    promise = undefined
+                    return
+                }
+
+                void vscode.window.withProgress(
+                    {
+                        cancellable: true,
+                        location: vscode.ProgressLocation.Notification,
+                        title: val.message,
+                    },
+                    async (_) => {
+                        await promise
+                    }
+                )
+            }
+        )
 
         if (Experiments.instance.get('amazonqLSPInline', false)) {
             const inlineManager = new InlineCompletionManager(client)
@@ -118,6 +188,8 @@ export async function startLanguageServer(
 
         if (Experiments.instance.get('amazonqChatLSP', false)) {
             activate(client, encryptionKey, resourcePaths.ui)
+            AuthUtil.create(new auth2.LanguageClientAuth(client, clientId, encryptionKey))
+            await AuthUtil.instance.restore()
         }
     })
 }
