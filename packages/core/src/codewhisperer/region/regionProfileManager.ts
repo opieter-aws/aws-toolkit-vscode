@@ -63,13 +63,11 @@ export class RegionProfileManager {
 
     get clientConfig(): CodeWhispererConfig {
         if (!this.authProvider.isConnected()) {
-
             throw new ToolkitError('trying to get client configuration without credential')
         }
 
         // builder id should simply use default IAD
         if (this.authProvider.isBuilderIdConnection()) {
-
             return defaultServiceConfig
         }
 
