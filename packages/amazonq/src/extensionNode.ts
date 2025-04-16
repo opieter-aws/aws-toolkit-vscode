@@ -24,6 +24,7 @@ import api from './api'
 import { activate as activateCWChat } from './app/chat/activation'
 import { activate as activateInlineChat } from './inlineChat/activation'
 import { beta } from 'aws-core-vscode/dev'
+import * as amazonq from 'aws-core-vscode/amazonq'
 import { /* activate as activateNotifications,*/ NotificationsController } from 'aws-core-vscode/notifications'
 // import { AuthState, AuthUtil } from 'aws-core-vscode/codewhisperer'
 // import { telemetry, AuthUserState } from 'aws-core-vscode/telemetry'
@@ -54,6 +55,8 @@ async function activateAmazonQNode(context: vscode.ExtensionContext) {
         await activateQGumby(extContext as ExtContext)
     }
     activateInlineChat(context)
+
+    context.subscriptions.push(amazonq.focusAmazonQPanel.register(), amazonq.focusAmazonQPanelKeybinding.register())
 
     const authProvider = new CommonAuthViewProvider(
         context,
