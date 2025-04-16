@@ -115,14 +115,13 @@ export async function activateAmazonQCommon(context: vscode.ExtensionContext, is
 
     await initializeAuth(globals.loginManager)
 
-    await activateAmazonqLsp(context)
-
     const extContext = {
         extensionContext: context,
     }
 
     // This contains every lsp agnostic things (auth, security scan, code scan)
     await activateCodeWhisperer(extContext as ExtContext)
+    await activateAmazonqLsp(context)
 
     if (!Experiments.instance.get('amazonqLSPInline', false)) {
         await activateInlineCompletion()
