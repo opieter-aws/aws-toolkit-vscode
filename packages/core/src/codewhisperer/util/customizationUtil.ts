@@ -98,12 +98,10 @@ export const getSelectedCustomization = (): Customization => {
         return baseCustomization
     }
 
-    const selectedCustomizationArr = globals.globalState.tryGet<{ [label: string]: Customization }>(
+    const selectedCustomization = globals.globalState.tryGet<Customization>(
         'CODEWHISPERER_SELECTED_CUSTOMIZATION',
-        Object,
-        {}
+        Object
     )
-    const selectedCustomization = selectedCustomizationArr[AuthUtil.instance.profileName]
 
     if (selectedCustomization && selectedCustomization.name !== '') {
         return selectedCustomization
@@ -111,9 +109,6 @@ export const getSelectedCustomization = (): Customization => {
         return baseCustomization
     }
 }
-
-// TODO: @hayemaxi Do NOT use AuthUtil.instance.profileName, migrate the old setting and use a single value instead of a map
-// TODO: refactor to only ever have 1 customization
 
 /**
  * @param customization customization to select
@@ -132,15 +127,10 @@ export const setSelectedCustomization = async (customization: Customization, isO
             return
         }
     }
-    const selectedCustomizationObj = globals.globalState.tryGet<{ [label: string]: Customization }>(
-        'CODEWHISPERER_SELECTED_CUSTOMIZATION',
-        Object,
-        {}
-    )
-    selectedCustomizationObj[AuthUtil.instance.profileName] = customization
+
+    await globals.globalState.update('CODEWHISPERER_SELECTED_CUSTOMIZATION', customization)
     getLogger().debug(`Selected customization ${customization.name} for ${AuthUtil.instance.profileName}`)
 
-    await globals.globalState.update('CODEWHISPERER_SELECTED_CUSTOMIZATION', selectedCustomizationObj)
     if (isOverride) {
         await globals.globalState.update('aws.amazonq.customization.overrideV2', customization.arn)
     }
