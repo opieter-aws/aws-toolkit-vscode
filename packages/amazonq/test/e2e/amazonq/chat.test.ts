@@ -12,6 +12,7 @@ import { assertContextCommands, assertQuickActions } from './assert'
 import { registerAuthHook, using } from 'aws-core-vscode/test'
 import { loginToIdC } from './utils/setup'
 import { webviewConstants, webviewTabConstants } from 'aws-core-vscode/amazonq'
+import { FeatureContext, Features } from 'aws-core-vscode/shared'
 
 describe('Amazon Q Chat', function () {
     this.retries(3)
@@ -32,18 +33,29 @@ describe('Amazon Q Chat', function () {
     })
 
     // jscpd:ignore-start
-    beforeEach(() => {
+    beforeEach(async () => {
         // Make sure you're logged in before every test
         registerAuthHook('amazonq-test-account')
-        framework = new qTestingFramework('cwc', true, [])
+        framework = await qTestingFramework.create('cwc', true, [
+            [
+                Features.dataCollectionFeature,
+                new FeatureContext(Features.dataCollectionFeature, 'ENABLED', { boolValue: true }),
+            ],
+        ])
+        framework.getTabs()
         tab = framework.createTab()
         store = tab.getStore()
+        framework.getTabs()
     })
 
     afterEach(() => {
-        framework.removeTab(tab.tabID)
+        framework.removeAllTabs()
         framework.dispose()
         sinon.restore()
+    })
+
+    it('Shows title', () => {
+        assert.deepStrictEqual(store.tabTitle, 'Chat')
     })
 
     it(`Shows quick actions: ${availableCommands.join(', ')}`, async () => {
@@ -55,10 +67,6 @@ describe('Amazon Q Chat', function () {
     })
 
     // jscpd:ignore-end
-
-    it('Shows title', () => {
-        assert.deepStrictEqual(store.tabTitle, 'Chat')
-    })
 
     it('Shows placeholder', () => {
         assert.deepStrictEqual(store.promptInputPlaceholder, webviewTabConstants.commonTabData.placeholder)

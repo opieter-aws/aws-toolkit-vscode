@@ -81,7 +81,7 @@ export class AmazonQChatViewProvider implements WebviewViewProvider {
         performance.mark(amazonqMark.open)
     }
 
-    private async getWebviewContent() {
+    public async getWebviewContent() {
         const featureConfigData = await featureConfig.getFeatureConfigs()
 
         const isSM = isSageMaker('SMAI')
@@ -110,7 +110,6 @@ export class AmazonQChatViewProvider implements WebviewViewProvider {
             script-src ${entrypoint} filesystem: file: vscode-resource: https: ws: wss: 'unsafe-inline';`
 
         return `
-        <!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8">

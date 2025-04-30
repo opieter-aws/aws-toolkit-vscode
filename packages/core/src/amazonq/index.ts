@@ -63,10 +63,10 @@ export function createMynahUI(
     disabledCommands?: string[]
 ) {
     if (typeof window !== 'undefined') {
-        const mynahUI = require('./webview/ui/main')
-        return mynahUI.createMynahUI(ideApi, amazonQEnabled, featureConfigsSerialized, welcomeCount, disabledCommands)
+        //const mynahUI = require('./webview/ui/main')
+        //return mynahUI.createMynahUI(ideApi, amazonQEnabled, featureConfigsSerialized, welcomeCount, disabledCommands)
     }
-    throw new Error('Not implemented for node')
+    //throw new Error('Not implemented for node')
 }
 
 export * from './commons/types'

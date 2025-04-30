@@ -16,11 +16,17 @@ export function injectJSDOM() {
             console.error(error)
         }
     })
+    virtualConsole.on('log', (log) => {
+        console.log(log)
+    })
 
     const dom = new JSDOM(undefined, {
         pretendToBeVisual: true,
         includeNodeLocations: true,
         virtualConsole,
+        runScripts: 'dangerously',
+        resources: 'usable',
+        url: 'file://',
     })
     global.window = dom.window as unknown as Window & typeof globalThis
     global.document = dom.window.document

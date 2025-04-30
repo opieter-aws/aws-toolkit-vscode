@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ChatPrompt, MynahUI, QuickActionCommandGroup } from '@aws/mynah-ui'
+import { type ChatPrompt, type MynahUI, type QuickActionCommandGroup } from '@aws/mynah-ui'
 import { isTabType } from './storages/tabsStorage'
 import { WebviewUIHandler } from './main'
 import { FeatureContext } from '../../../shared/featureConfig'
 import { TabDataGenerator } from './tabs/generator'
 import { RegionProfile } from '../../../codewhisperer/models/model'
-import { ChatClientAdapter, ChatEventHandler } from '@aws/chat-client'
+import { type ChatClientAdapter, type ChatEventHandler } from '@aws/chat-client'
 
 export class HybridChatAdapter implements ChatClientAdapter {
     private uiHandler?: WebviewUIHandler

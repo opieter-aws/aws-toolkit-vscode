@@ -17,7 +17,12 @@ import {
     updateConfigurationRequestType,
 } from '@aws/language-server-runtimes/protocol'
 
-export async function activate(languageClient: LanguageClient, encryptionKey: Buffer, mynahUIPath: string) {
+export async function activate(
+    languageClient: LanguageClient,
+    encryptionKey: Buffer,
+    mynahUIPath: string,
+    injectedProvider?: AmazonQChatViewProvider
+) {
     const disposables = globals.context.subscriptions
 
     // Make sure we've sent an auth profile to the language server before even initializing the UI
@@ -26,21 +31,30 @@ export async function activate(languageClient: LanguageClient, encryptionKey: Bu
         profileArn: AuthUtil.instance.regionProfileManager.activeRegionProfile?.arn,
     })
 
-    const provider = new AmazonQChatViewProvider(mynahUIPath)
+    const provider = injectedProvider ?? new AmazonQChatViewProvider(mynahUIPath)
 
-    disposables.push(
-        window.registerWebviewViewProvider(AmazonQChatViewProvider.viewType, provider, {
-            webviewOptions: {
-                retainContextWhenHidden: true,
-            },
-        })
-    )
+    try {
+        disposables.push(
+            window.registerWebviewViewProvider(AmazonQChatViewProvider.viewType, provider, {
+                webviewOptions: {
+                    retainContextWhenHidden: true,
+                },
+            })
+        )
+    } catch (err) {
+        getLogger().debug('Webview provider already registered: %O', err)
+    }
 
     /**
      * Commands are registered independent of the webview being open because when they're executed
      * they focus the webview
      **/
-    registerCommands(provider)
+    try {
+        registerCommands(provider)
+    } catch (err) {
+        getLogger().debug('Webview provider already registered: %O', err)
+    }
+
     registerLanguageServerEventListener(languageClient, provider)
 
     provider.onDidResolveWebview(() => {
@@ -70,23 +84,34 @@ export async function activate(languageClient: LanguageClient, encryptionKey: Bu
     })
 
     // register event listeners from the legacy agent flow
-    await registerLegacyChatListeners(globals.context)
+    try {
+        // register event listeners from the legacy agent flow
+        await registerLegacyChatListeners(globals.context)
+    } catch (err) {
+        getLogger().info('Legacy chat listeners already registered: %O', err)
+    }
 
-    disposables.push(
-        AuthUtil.instance.regionProfileManager.onDidChangeRegionProfile(async () => {
-            void pushConfigUpdate(languageClient, {
-                type: 'profile',
-                profileArn: AuthUtil.instance.regionProfileManager.activeRegionProfile?.arn,
+    try {
+        disposables.push(
+            AuthUtil.instance.regionProfileManager.onDidChangeRegionProfile(async () => {
+                void pushConfigUpdate(languageClient, {
+                    type: 'profile',
+                    profileArn: AuthUtil.instance.regionProfileManager.activeRegionProfile?.arn,
+                })
+                await provider.refreshWebview()
+            }),
+            Commands.register('aws.amazonq.updateCustomizations', () => {
+                void pushConfigUpdate(languageClient, {
+                    type: 'customization',
+                    customization: undefinedIfEmpty(getSelectedCustomization().arn),
+                })
             })
-            await provider.refreshWebview()
-        }),
-        Commands.register('aws.amazonq.updateCustomizations', () => {
-            void pushConfigUpdate(languageClient, {
-                type: 'customization',
-                customization: undefinedIfEmpty(getSelectedCustomization().arn),
-            })
-        })
-    )
+        )
+    } catch (err) {
+        getLogger().info('Event listeners already registered: %O', err)
+    }
+
+    return provider
 }
 
 /**
