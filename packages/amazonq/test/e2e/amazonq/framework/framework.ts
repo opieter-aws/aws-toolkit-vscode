@@ -151,6 +151,12 @@ export class qTestingFramework {
             await bundle(connectorPath, bundlePath)
         }
 
+        const langaugeClient = await startLanguageServer(globals.context, lsp.resourcePaths)
+
+        const provider = await activateLspChat(langaugeClient, encryptionKey, uiPath)
+        provider.uiPath = uiPath
+        provider.connectorAdapterPath = connectorPath
+
         // const provider = new AmazonQChatViewProvider(uiPath)
         // provider.uiPath = uiPath
         // provider.connectorAdapterPath = connectorPath
@@ -190,19 +196,18 @@ export class qTestingFramework {
         connectorScript.textContent = connectorContent
         document.body.appendChild(connectorScript)
 
-        // postMessage: (message: string) => {
-        //     const appMessagePublisher = DefaultAmazonQAppInitContext.instance
-        //         .getWebViewToAppsMessagePublishers()
-        //         .get(featureName)
-        //     if (appMessagePublisher === undefined) {
-        //         return
-        //     }
-        //     appMessagePublisher.publish(message)
-        // },
-
         const vscodeApi = {
             postMessage: (message: any) => {
                 console.log('VSCode postMessage:', message)
+                const appMessagePublisher = DefaultAmazonQAppInitContext.instance
+                    .getWebViewToAppsMessagePublishers()
+                    .get(featureName)
+                if (appMessagePublisher === undefined) {
+                    console.log('appMessagePublisher undefined')
+                    return
+                }
+                appMessagePublisher.publish(message)
+                console.log('appMessagePublisher published')
             },
             getState: () => ({}),
             setState: (state: any) => console.log('setState:', state),
@@ -241,13 +246,6 @@ export class qTestingFramework {
         //registerMessageListeners(languageClient, provider, encryptionKey)
 
         const framework = new qTestingFramework(featureName, amazonQEnabled, featureConfigsSerialized)
-        //(framework as any).m = window.qChat;
-
-        const langaugeClient = await startLanguageServer(globals.context, lsp.resourcePaths)
-
-        const provider = await activateLspChat(langaugeClient, encryptionKey, uiPath)
-        provider.uiPath = uiPath
-        provider.connectorAdapterPath = connectorPath
 
         return framework
     }
